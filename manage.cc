@@ -9,8 +9,7 @@
 #include <X11/Xutil.h>
 #include <X11/Xatom.h>
 #include <X11/extensions/shape.h>
-#include "dat.h"
-#include "fns.h"
+#include "9wm.h"
 
 int manage(Client* c, int mapped)
 {

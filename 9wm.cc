@@ -12,8 +12,7 @@
 #include <X11/Xutil.h>
 #include <X11/Xatom.h>
 #include <X11/extensions/shape.h>
-#include "dat.h"
-#include "fns.h"
+#include "9wm.h"
 
 char const* version[] = {
     "9wm version 1.3.7, Copyright (c) 2016 multiple authors", 0,

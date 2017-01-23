@@ -6,8 +6,7 @@
 #include <X11/Xos.h>
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
-#include "dat.h"
-#include "fns.h"
+#include "9wm.h"
 
 int nobuttons(XButtonEvent* e)
 {
