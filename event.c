@@ -327,26 +327,39 @@ void clientmesg(XClientMessageEvent* e)
   }
 }
 
+struct _XColormapEvent {
+  int type;
+  unsigned long serial;
+  Bool send_event;
+  Display* display;
+  Window window;
+  Colormap colormap;
+  Bool new_;
+  int state;
+};
+
 void cmap(XColormapEvent* e)
 {
+  struct _XColormapEvent* e_ = (struct _XColormapEvent*)e;
+
   Client* c;
   int i;
 
   /*
    * we don't set curtime as nothing here uses it
    */
-  if (e->new) {
-    c = getclient(e->window, 0);
+  if (e_->new_) {
+    c = getclient(e_->window, 0);
     if (c) {
-      c->cmap = e->colormap;
+      c->cmap = e_->colormap;
       if (c == current)
         cmapfocus(c);
     }
     else
       for (c = clients; c; c = c->next) {
         for (i = 0; i < c->ncmapwins; i++)
-          if (c->cmapwins[i] == e->window) {
-            c->wmcmaps[i] = e->colormap;
+          if (c->cmapwins[i] == e_->window) {
+            c->wmcmaps[i] = e_->colormap;
             if (c == current)
               cmapfocus(c);
             return;
@@ -358,14 +371,14 @@ void cmap(XColormapEvent* e)
 void property(XPropertyEvent* e)
 {
   Atom a;
-  int delete;
+  int delete_;
   Client* c;
 
   /*
    * we don't set curtime as nothing here uses it
    */
   a = e->atom;
-  delete = (e->state == PropertyDelete);
+  delete_ = (e->state == PropertyDelete);
   c = getclient(e->window, 0);
   if (c == 0)
     return;
@@ -374,14 +387,14 @@ void property(XPropertyEvent* e)
   case XA_WM_ICON_NAME:
     if (c->iconname != 0)
       XFree((char*)c->iconname);
-    c->iconname = delete ? 0 : getprop(c->window, a);
+    c->iconname = delete_ ? 0 : getprop(c->window, a);
     setlabel(c);
     renamec(c, c->label);
     return;
   case XA_WM_NAME:
     if (c->name != 0)
       XFree((char*)c->name);
-    c->name = delete ? 0 : getprop(c->window, a);
+    c->name = delete_ ? 0 : getprop(c->window, a);
     setlabel(c);
     renamec(c, c->label);
     return;

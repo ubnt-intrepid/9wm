@@ -31,22 +31,22 @@ Menu egg = {
 
 void button(XButtonEvent* e)
 {
-  int n, shift;
-  Client* c;
-  Window dw;
-  ScreenInfo* s;
-
   curtime = e->time;
-  s = getscreen(e->root);
+
+  ScreenInfo* s = getscreen(e->root);
   if (s == 0)
     return;
-  c = getclient(e->window, 0);
+
+  Client* c = getclient(e->window, 0);
   if (c) {
     e->x += c->x - BORDER + 1;
     e->y += c->y - BORDER + 1;
   }
-  else if (e->window != e->root)
+  else if (e->window != e->root) {
+    Window dw;
     XTranslateCoordinates(dpy, e->window, s->root, e->x, e->y, &e->x, &e->y, &dw);
+  }
+
   switch (e->button) {
   case Button1:
     if (c) {
@@ -63,15 +63,17 @@ void button(XButtonEvent* e)
       spawn(s, "9wm-mm");
     }
     return;
-  default:
-    return;
   case Button3:
     break;
+  default:
+    return;
   }
 
   if (current && current->screen == s)
     cmapnofocus(s);
-  switch (n = menuhit(e, &b3menu)) {
+
+  int n = menuhit(e, &b3menu);
+  switch (n) {
   case 0: /* New */
     spawn(s, termprog);
     break;
@@ -82,10 +84,11 @@ void button(XButtonEvent* e)
     move(selectwin(0, 0, s));
     break;
   case 3: /* Delete */
-    shift = 0;
+  {
+    int shift = 0;
     c = selectwin(1, &shift, s);
-    delete (c, shift);
-    break;
+    delete_(c, shift);
+  } break;
   case 4: /* Hide */
     hide(selectwin(1, 0, s));
     break;
@@ -118,14 +121,13 @@ void spawn(ScreenInfo* s, char* prog)
   }
 }
 
-void reshape(c) Client* c;
+void reshape(Client* c)
 {
-  int odx, ody;
-
   if (c == 0)
     return;
-  odx = c->dx;
-  ody = c->dy;
+
+  int odx = c->dx;
+  int ody = c->dy;
   if (sweep(c) == 0)
     return;
   active(c);
@@ -151,8 +153,7 @@ void move(Client* c)
   sendconfig(c);
 }
 
-void delete (c, shift)Client* c;
-int shift;
+void delete_(Client* c, int shift)
 {
   if (c == 0)
     return;
@@ -164,8 +165,6 @@ int shift;
 
 void hide(Client* c)
 {
-  int i;
-
   if (c == 0 || numhidden == MAXHIDDEN)
     return;
   if (hidden(c)) {
@@ -178,7 +177,7 @@ void hide(Client* c)
   if (c == current)
     nofocus();
 
-  for (i = numhidden; i > 0; i -= 1) {
+  for (int i = numhidden; i > 0; i -= 1) {
     hiddenc[i] = hiddenc[i - 1];
     b3items[B3FIXED + i] = b3items[B3FIXED + i - 1];
   }
@@ -189,14 +188,12 @@ void hide(Client* c)
 
 void unhide(int n, int map)
 {
-  Client* c;
-  int i;
-
   if (n >= numhidden) {
     fprintf(stderr, "9wm: unhide: n %d numhidden %d\n", n, numhidden);
     return;
   }
-  c = hiddenc[n];
+
+  Client* c = hiddenc[n];
   if (!hidden(c)) {
     fprintf(stderr, "9wm: unhide: not hidden: %s(0x%x)\n", c->label, (int)c->window);
     return;
@@ -211,39 +208,38 @@ void unhide(int n, int map)
   }
 
   numhidden--;
-  for (i = n; i < numhidden; i++) {
+  for (int i = n; i < numhidden; i++) {
     hiddenc[i] = hiddenc[i + 1];
     b3items[B3FIXED + i] = b3items[B3FIXED + i + 1];
   }
   b3items[B3FIXED + numhidden] = 0;
 }
 
-void unhidec(c, map) Client* c;
-int map;
+void unhidec(Client* c, int map)
 {
-  int i;
-
-  for (i = 0; i < numhidden; i++)
+  for (int i = 0; i < numhidden; i++) {
     if (c == hiddenc[i]) {
       unhide(i, map);
       return;
     }
+  }
+
   fprintf(stderr, "9wm: unhidec: not hidden: %s(0x%x)\n", c->label, (int)c->window);
 }
 
-void renamec(c, name) Client* c;
-char* name;
+void renamec(Client* c, char* name)
 {
-  int i;
-
   if (name == 0)
     name = "???";
   c->label = name;
+
   if (!hidden(c))
     return;
-  for (i = 0; i < numhidden; i++)
+
+  for (int i = 0; i < numhidden; i++) {
     if (c == hiddenc[i]) {
       b3items[B3FIXED + i] = name;
       return;
     }
+  }
 }

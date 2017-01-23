@@ -16,7 +16,7 @@ int manage(Client* c, int mapped)
 {
   int fixsize, dohide, doreshape, state;
   long msize;
-  XClassHint class;
+  XClassHint class_;
   XWMHints* hints;
 
   trace("manage", c, 0);
@@ -26,14 +26,14 @@ int manage(Client* c, int mapped)
    * Get loads of hints
    */
 
-  if (XGetClassHint(dpy, c->window, &class) != 0) { /* ``Success'' */
-    c->instance = class.res_name;
-    c->class = class.res_class;
-    c->is9term = (strcmp(c->class, "9term") == 0);
+  if (XGetClassHint(dpy, c->window, &class_) != 0) { /* ``Success'' */
+    c->instance = class_.res_name;
+    c->class_ = class_.res_class;
+    c->is9term = (strcmp(c->class_, "9term") == 0);
   }
   else {
     c->instance = 0;
-    c->class = 0;
+    c->class_ = 0;
     c->is9term = 0;
   }
   c->iconname = getprop(c->window, XA_WM_ICON_NAME);
@@ -312,8 +312,6 @@ void cmapnofocus(ScreenInfo* s) { installcmap(s, None); }
 
 void getcmaps(Client* c)
 {
-  int n, i;
-  Window* cw;
   XWindowAttributes attr;
 
   if (!c->init) {
@@ -321,7 +319,8 @@ void getcmaps(Client* c)
     c->cmap = attr.colormap;
   }
 
-  n = _getprop(c->window, wm_colormaps, XA_WINDOW, 100L, (unsigned char**)&cw);
+  Window* cw;
+  int n = _getprop(c->window, wm_colormaps, XA_WINDOW, 100L, (unsigned char**)&cw);
   if (c->ncmapwins != 0) {
     XFree((char*)c->cmapwins);
     free((char*)c->wmcmaps);
@@ -335,7 +334,7 @@ void getcmaps(Client* c)
   c->cmapwins = cw;
 
   c->wmcmaps = (Colormap*)malloc(n * sizeof(Colormap));
-  for (i = 0; i < n; i++) {
+  for (int i = 0; i < n; i++) {
     if (cw[i] == c->window)
       c->wmcmaps[i] = c->cmap;
     else {
@@ -359,8 +358,8 @@ void setlabel(Client* c)
   else if (c->instance != 0) {
     label = c->instance;
   }
-  else if (c->class != 0) {
-    label = c->class;
+  else if (c->class_ != 0) {
+    label = c->class_;
   }
   else {
     label = "no label";
@@ -396,9 +395,8 @@ int _getprop(Window w, Atom a, Atom type, long len, unsigned char** p)
   Atom real_type;
   int format;
   unsigned long n, extra;
-  int status;
 
-  status = XGetWindowProperty(dpy, w, a, 0L, len, False, type, &real_type, &format, &n, &extra, p);
+  int status = XGetWindowProperty(dpy, w, a, 0L, len, False, type, &real_type, &format, &n, &extra, p);
   if (status != Success || *p == 0)
     return -1;
   if (n == 0)
@@ -422,12 +420,11 @@ char* getprop(Window w, Atom a)
 int get1prop(Window w, Atom a, Atom type)
 {
   unsigned char* p;
-  int ret;
-
   if (_getprop(w, a, type, 1L, &p) <= 0) {
     return 0;
   }
-  ret = (int)(unsigned long int)(*p);
+
+  int ret = (int)(unsigned long int)(*p);
   XFree((void*)p);
   return ret;
 }
@@ -439,7 +436,6 @@ int getiprop(Window w, Atom a) { return get1prop(w, a, XA_INTEGER); }
 void setwstate(Client* c, int state)
 {
   long data[2];
-
   data[0] = (long)state;
   data[1] = (long)None;
 
@@ -450,7 +446,6 @@ void setwstate(Client* c, int state)
 int getwstate(Window w, int* state)
 {
   long* p = 0;
-
   if (_getprop(w, wm_state, wm_state, 2L, (unsigned char**)&p) <= 0)
     return 0;
 
@@ -461,21 +456,23 @@ int getwstate(Window w, int* state)
 
 void getproto(Client* c)
 {
-  Atom* p;
-  int i;
-  long n;
-  Window w;
-
-  w = c->window;
+  Window w = c->window;
   c->proto = 0;
-  if ((n = _getprop(w, wm_protocols, XA_ATOM, 20L, (unsigned char**)&p)) <= 0)
-    return;
 
-  for (i = 0; i < n; i++)
-    if (p[i] == wm_delete)
+  Atom* p;
+  long n = _getprop(w, wm_protocols, XA_ATOM, 20L, (unsigned char**)&p);
+  if (n <= 0) {
+    return;
+  }
+
+  for (int i = 0; i < n; i++) {
+    if (p[i] == wm_delete) {
       c->proto |= Pdelete;
-    else if (p[i] == wm_take_focus)
+    }
+    else if (p[i] == wm_take_focus) {
       c->proto |= Ptakefocus;
+    }
+  }
 
   XFree((char*)p);
 }

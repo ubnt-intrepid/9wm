@@ -46,7 +46,7 @@ struct Client {
 
   char* label;
   char* instance;
-  char* class;
+  char* class_;
   char* name;
   char* iconname;
 

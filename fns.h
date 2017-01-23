@@ -57,7 +57,7 @@ void button();
 void spawn();
 void reshape();
 void move();
-void delete ();
+void delete_();
 void hide();
 void unhide();
 void unhidec();
