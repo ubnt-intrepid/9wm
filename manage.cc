@@ -347,7 +347,8 @@ void getcmaps(Client* c)
 
 void setlabel(Client* c)
 {
-  char *label, *p;
+  char const* label;
+  char* p;
 
   if (c->iconname != 0) {
     label = c->iconname;
@@ -364,14 +365,14 @@ void setlabel(Client* c)
   else {
     label = "no label";
   }
-  while ((p = strstr(label, " - "))) {
+  while ((p = strstr(const_cast<char*>(label), " - "))) {
     label = p + 3;
   }
-  if ((p = strchr(label, ':')) != 0)
+  if ((p = strchr(const_cast<char*>(label), ':')) != 0)
     *p = '\0';
   for (; *label == ' '; label += 1)
     ;
-  c->label = label;
+  c->label = const_cast<char*>(label);
 }
 
 #ifdef SHAPE

@@ -160,7 +160,7 @@ int menuhit(XButtonEvent* e, Menu* m)
     case Expose:
       XClearWindow(dpy, s->menuwin);
       for (i = 0; i < n; i++) {
-        char* item = m->item[i];
+        char const* item = m->item[i];
 
         if (i < 5) {
           tx = (wide - XTextWidth(font, item, strlen(item))) / 2;
@@ -302,7 +302,7 @@ void misleep(int msec)
   select(0, 0, 0, 0, &t);
 }
 
-int sweepdrag(Client* c, XButtonEvent* e0, void (*recalc)())
+int sweepdrag(Client* c, XButtonEvent* e0, void (*recalc)(Client*, int, int))
 {
   XEvent ev;
   int idle;

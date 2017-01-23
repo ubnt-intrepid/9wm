@@ -12,7 +12,7 @@
 
 int ignore_badwindow;
 
-void fatal(char* s)
+void fatal(char const* s)
 {
   fprintf(stderr, "9wm: ");
   perror(s);
@@ -47,7 +47,7 @@ int handler(Display* d, XErrorEvent* e)
   return 0;
 }
 
-void graberror(char* f, int err)
+void graberror(char const* f, int err)
 {
 #ifdef DEBUG /* sick of "bug" reports; grab errors "just happen" */
   char* s;

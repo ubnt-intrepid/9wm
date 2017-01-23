@@ -1,13 +1,21 @@
-CFLAGS += -std=gnu11 -DSHAPE -Wall -Werror -pedantic
-LDLIBS = -lXext -lX11
-BIN = $(DESTDIR)/usr/bin/
+CXX				= g++
+TARGET 		= 9wm
+CXXFLAGS += -std=c++14 -DSHAPE -Wall -pedantic
+LDFLAGS 	= -lXext -lX11
+SRCS			= 9wm.cc event.cc manage.cc menu.cc client.cc grab.cc cursor.cc error.cc
+OBJS			= $(SRCS:.cc=.o)
 
+BIN = $(DESTDIR)/usr/bin/
 MANDIR = $(DESTDIR)/usr/share/man/man1
 MANSUFFIX = 1
 
-all: 9wm
+all: $(TARGET)
 
-9wm: 9wm.o event.o manage.o menu.o client.o grab.o cursor.o error.o
+$(TARGET): $(OBJS)
+	$(CXX) -o $@ $^ $(LDFLAGS)
+
+%.o: %.cc
+	$(CXX) -c $< $(CXXFLAGS)
 
 install: 9wm
 	mkdir -p $(BIN)
@@ -17,12 +25,10 @@ install.man:
 	mkdir -p $(MANDIR)
 	cp 9wm.man $(MANDIR)/9wm.$(MANSUFFIX)
 
-$(OBJS): $(HFILES)
-
 clean:
 	rm -f 9wm *.o
 
 format:
-	clang-format -i *.c *.h
+	clang-format -i *.cc *.h
 
 .PHONY: all 9wm install install.man clean format

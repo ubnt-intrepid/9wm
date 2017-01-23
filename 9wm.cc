@@ -15,7 +15,7 @@
 #include "dat.h"
 #include "fns.h"
 
-char* version[] = {
+char const* version[] = {
     "9wm version 1.3.7, Copyright (c) 2016 multiple authors", 0,
 };
 
@@ -26,7 +26,7 @@ XFontStruct* font;
 int nostalgia;
 char** myargv;
 char* termprog;
-char* shell;
+char const* shell;
 Bool shape;
 int _border = 4;
 int _inset = 1;
@@ -50,7 +50,7 @@ Atom utf8_string;
 Atom _9wm_running;
 Atom _9wm_hold_mode;
 
-char* fontlist[] = {
+char const* fontlist[] = {
     "-*-dejavu sans-bold-r-*-*-14-*-*-*-p-*-*-*",
     "-adobe-helvetica-bold-r-*-*-14-*-*-*-p-*-*-*",
     "lucm.latin1.9",
@@ -77,7 +77,7 @@ void usage(void)
 int main(int argc, char* argv[])
 {
   int i, do_exit, do_restart;
-  char* fname;
+  char const* fname;
   int shape_event, dummy;
   char* borderstr = NULL;
   myargv = argv; /* for restart */
@@ -323,7 +323,7 @@ void sendcmessage(Window w, Atom a, long x, int isroot)
     fprintf(stderr, "9wm: sendcmessage failed\n");
 }
 
-void sendconfig(c) Client* c;
+void sendconfig(Client* c)
 {
   XConfigureEvent ce;
 
@@ -340,7 +340,7 @@ void sendconfig(c) Client* c;
   XSendEvent(dpy, c->window, False, StructureNotifyMask, (XEvent*)&ce);
 }
 
-void sighandler(void) { signalled = 1; }
+void sighandler(int signo) { signalled = 1; }
 
 void getevent(XEvent* e)
 {

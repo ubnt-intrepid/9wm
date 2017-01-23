@@ -66,7 +66,7 @@ struct Client {
 #define Ptakefocus 2
 
 struct Menu {
-  char** item;
+  char const** item;
   char* (*gen)();
   int lasthit;
 };
@@ -101,8 +101,8 @@ extern int nostalgia;
 extern char** myargv;
 extern Bool shape;
 extern char* termprog;
-extern char* shell;
-extern char* version[];
+extern char const* shell;
+extern char const* version[];
 extern int _border;
 extern int _inset;
 extern int curtime;
@@ -129,7 +129,7 @@ extern Client* current;
 /* menu.c */
 extern Client* hiddenc[];
 extern int numhidden;
-extern char* b3items[];
+extern char const* b3items[];
 extern Menu b3menu;
 
 /* error.c */

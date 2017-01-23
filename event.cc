@@ -12,93 +12,6 @@
 #include "dat.h"
 #include "fns.h"
 
-void mainloop(int shape_event)
-{
-  XEvent ev;
-
-  for (;;) {
-    getevent(&ev);
-
-#ifdef DEBUG_EV
-    if (debug) {
-      ShowEvent(&ev);
-      printf("\n");
-    }
-#endif
-    switch (ev.type) {
-    default:
-#ifdef SHAPE
-      if (shape && ev.type == shape_event)
-        shapenotify((XShapeEvent*)&ev);
-      else
-#endif
-        fprintf(stderr, "9wm: unknown ev.type %d\n", ev.type);
-      break;
-    case ButtonPress:
-      button(&ev.xbutton);
-      break;
-    case ButtonRelease:
-      break;
-    case MapRequest:
-      mapreq(&ev.xmaprequest);
-      break;
-    case ConfigureRequest:
-      configurereq(&ev.xconfigurerequest);
-      break;
-    case CirculateRequest:
-      circulatereq(&ev.xcirculaterequest);
-      break;
-    case UnmapNotify:
-      unmap(&ev.xunmap);
-      break;
-    case CreateNotify:
-      newwindow(&ev.xcreatewindow);
-      break;
-    case DestroyNotify:
-      destroy(ev.xdestroywindow.window);
-      break;
-    case ClientMessage:
-      clientmesg(&ev.xclient);
-      break;
-    case ColormapNotify:
-      cmap(&ev.xcolormap);
-      break;
-    case PropertyNotify:
-      property(&ev.xproperty);
-      break;
-    case SelectionClear:
-      fprintf(stderr, "9wm: SelectionClear (this should not happen)\n");
-      break;
-    case SelectionNotify:
-      fprintf(stderr, "9wm: SelectionNotify (this should not happen)\n");
-      break;
-    case SelectionRequest:
-      fprintf(stderr, "9wm: SelectionRequest (this should not happen)\n");
-      break;
-    case EnterNotify:
-      enter(&ev.xcrossing);
-      break;
-    case ReparentNotify:
-      reparent(&ev.xreparent);
-      break;
-    case FocusIn:
-      focusin(&ev.xfocus);
-      break;
-    case MotionNotify:
-    case Expose:
-    case FocusOut:
-    case ConfigureNotify:
-    case MapNotify:
-    case MappingNotify:
-      /*
-       * not interested
-       */
-      trace("ignore", 0, &ev);
-      break;
-    }
-  }
-}
-
 void configurereq(XConfigureRequestEvent* e)
 {
   XWindowChanges wc;
@@ -450,7 +363,7 @@ void reparent(XReparentEvent* e)
 }
 
 #ifdef SHAPE
-void shapenotify(e) XShapeEvent* e;
+void shapenotify(XShapeEvent* e)
 {
   Client* c;
 
@@ -498,5 +411,92 @@ void focusin(XFocusChangeEvent* e)
     XMapRaised(dpy, c->parent);
     top(c);
     active(c);
+  }
+}
+
+void mainloop(int shape_event)
+{
+  XEvent ev;
+
+  for (;;) {
+    getevent(&ev);
+
+#ifdef DEBUG_EV
+    if (debug) {
+      ShowEvent(&ev);
+      printf("\n");
+    }
+#endif
+    switch (ev.type) {
+    default:
+#ifdef SHAPE
+      if (shape && ev.type == shape_event)
+        shapenotify((XShapeEvent*)&ev);
+      else
+#endif
+        fprintf(stderr, "9wm: unknown ev.type %d\n", ev.type);
+      break;
+    case ButtonPress:
+      button(&ev.xbutton);
+      break;
+    case ButtonRelease:
+      break;
+    case MapRequest:
+      mapreq(&ev.xmaprequest);
+      break;
+    case ConfigureRequest:
+      configurereq(&ev.xconfigurerequest);
+      break;
+    case CirculateRequest:
+      circulatereq(&ev.xcirculaterequest);
+      break;
+    case UnmapNotify:
+      unmap(&ev.xunmap);
+      break;
+    case CreateNotify:
+      newwindow(&ev.xcreatewindow);
+      break;
+    case DestroyNotify:
+      destroy(ev.xdestroywindow.window);
+      break;
+    case ClientMessage:
+      clientmesg(&ev.xclient);
+      break;
+    case ColormapNotify:
+      cmap(&ev.xcolormap);
+      break;
+    case PropertyNotify:
+      property(&ev.xproperty);
+      break;
+    case SelectionClear:
+      fprintf(stderr, "9wm: SelectionClear (this should not happen)\n");
+      break;
+    case SelectionNotify:
+      fprintf(stderr, "9wm: SelectionNotify (this should not happen)\n");
+      break;
+    case SelectionRequest:
+      fprintf(stderr, "9wm: SelectionRequest (this should not happen)\n");
+      break;
+    case EnterNotify:
+      enter(&ev.xcrossing);
+      break;
+    case ReparentNotify:
+      reparent(&ev.xreparent);
+      break;
+    case FocusIn:
+      focusin(&ev.xfocus);
+      break;
+    case MotionNotify:
+    case Expose:
+    case FocusOut:
+    case ConfigureNotify:
+    case MapNotify:
+    case MappingNotify:
+      /*
+       * not interested
+       */
+      trace("ignore", 0, &ev);
+      break;
+    }
   }
 }

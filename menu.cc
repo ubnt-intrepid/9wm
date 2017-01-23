@@ -17,7 +17,7 @@ Client* hiddenc[MAXHIDDEN];
 
 int numhidden;
 
-char* b3items[B3FIXED + MAXHIDDEN + 1] = {
+char const* b3items[B3FIXED + MAXHIDDEN + 1] = {
     "New", "Reshape", "Move", "Delete", "Hide", 0,
 };
 
@@ -102,7 +102,7 @@ void button(XButtonEvent* e)
     cmapfocus(current);
 }
 
-void spawn(ScreenInfo* s, char* prog)
+void spawn(ScreenInfo* s, char const* prog)
 {
   if (fork() == 0) {
     close(ConnectionNumber(dpy));

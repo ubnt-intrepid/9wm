@@ -138,7 +138,7 @@ Client* getclient(Window w, int create)
   c->state = WithdrawnState;
   c->init = 0;
   c->cmap = None;
-  c->label = c->class = 0;
+  c->label = c->class_ = 0;
   c->revert = 0;
   c->is9term = 0;
   c->hold = 0;
@@ -191,8 +191,8 @@ void rmclient(Client* c)
     XFree((char*)c->name);
   if (c->instance != 0)
     XFree((char*)c->instance);
-  if (c->class != 0)
-    XFree((char*)c->class);
+  if (c->class_ != 0)
+    XFree((char*)c->class_);
   memset(c, 0, sizeof(Client)); /* paranoia */
   free(c);
 }
