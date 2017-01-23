@@ -1,4 +1,4 @@
-CFLAGS += -DSHAPE -Wall -Werror -pedantic
+CFLAGS += -std=gnu11 -DSHAPE -Wall -Werror -pedantic
 LDLIBS = -lXext -lX11
 BIN = $(DESTDIR)/usr/bin/
 
@@ -21,3 +21,8 @@ $(OBJS): $(HFILES)
 
 clean:
 	rm -f 9wm *.o
+
+format:
+	clang-format -i *.c *.h
+
+.PHONY: all 9wm install install.man clean format

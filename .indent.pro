@@ -1,6 +1,0 @@
---original
---declaration-indentation 2
---indent-level 8
---line-length 132
---no-blank-lines-after-commas
---honour-newlines
