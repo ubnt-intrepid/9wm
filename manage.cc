@@ -123,15 +123,15 @@ int manage(Client* c, int mapped)
   }
   gravitate(c, 0);
 
-  c->parent = XCreateSimpleWindow(dpy, c->screen->root, c->x - BORDER, c->y - BORDER, c->dx + 2 * (BORDER - 1),
-                                  c->dy + 2 * (BORDER - 1), 1, c->screen->black, c->screen->white);
+  c->parent = XCreateSimpleWindow(dpy, c->screen->root, c->x - _border, c->y - _border, c->dx + 2 * (_border - 1),
+                                  c->dy + 2 * (_border - 1), 1, c->screen->black, c->screen->white);
   XSelectInput(dpy, c->parent, SubstructureRedirectMask | SubstructureNotifyMask);
   if (mapped)
     c->reparenting = 1;
   if (doreshape && !fixsize)
     XResizeWindow(dpy, c->window, c->dx, c->dy);
   XSetWindowBorderWidth(dpy, c->window, 0);
-  XReparentWindow(dpy, c->window, c->parent, BORDER - 1, BORDER - 1);
+  XReparentWindow(dpy, c->window, c->parent, _border - 1, _border - 1);
 #ifdef SHAPE
   if (shape) {
     XShapeSelectInput(dpy, c->window, ShapeNotifyMask);
@@ -224,7 +224,7 @@ void gravitate(Client* c, int invert)
   if (c->size.flags & PWinGravity)
     gravity = c->size.win_gravity;
 
-  delta = c->border - BORDER;
+  delta = c->border - _border;
   switch (gravity) {
   case NorthWestGravity:
     dx = 0;
@@ -267,8 +267,8 @@ void gravitate(Client* c, int invert)
     fprintf(stderr, "9wm: bad window gravity %d for 0x%x\n", gravity, (int)c->window);
     return;
   }
-  dx += BORDER;
-  dy += BORDER;
+  dx += _border;
+  dy += _border;
   if (invert) {
     dx = -dx;
     dy = -dy;
@@ -386,7 +386,7 @@ void setshape(Client* c)
    */
   rect = XShapeGetRectangles(dpy, c->window, ShapeBounding, &n, &order);
   if (n > 1)
-    XShapeCombineShape(dpy, c->parent, ShapeBounding, BORDER - 1, BORDER - 1, c->window, ShapeBounding, ShapeSet);
+    XShapeCombineShape(dpy, c->parent, ShapeBounding, _border - 1, _border - 1, c->window, ShapeBounding, ShapeSet);
   XFree((void*)rect);
 }
 #endif

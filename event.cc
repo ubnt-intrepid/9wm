@@ -21,7 +21,7 @@ void configurereq(XConfigureRequestEvent* e)
    * we don't set curtime as nothing here uses it
    */
   c = getclient(e->window, 0);
-  trace("configurereq", c, e);
+  trace("configurereq", c, reinterpret_cast<XEvent*>(e));
 
   e->value_mask &= ~CWSibling;
 
@@ -45,10 +45,10 @@ void configurereq(XConfigureRequestEvent* e)
         e->value_mask &= ~CWStackMode;
     }
     if (c->parent != c->screen->root && c->window == e->window) {
-      wc.x = c->x - BORDER;
-      wc.y = c->y - BORDER;
-      wc.width = c->dx + 2 * (BORDER - 1);
-      wc.height = c->dy + 2 * (BORDER - 1);
+      wc.x = c->x - _border;
+      wc.y = c->y - _border;
+      wc.width = c->dx + 2 * (_border - 1);
+      wc.height = c->dy + 2 * (_border - 1);
       wc.border_width = 1;
       wc.sibling = None;
       wc.stack_mode = e->detail;
@@ -58,8 +58,8 @@ void configurereq(XConfigureRequestEvent* e)
   }
 
   if (c && c->init) {
-    wc.x = BORDER - 1;
-    wc.y = BORDER - 1;
+    wc.x = _border - 1;
+    wc.y = _border - 1;
   }
   else {
     wc.x = e->x;
@@ -83,7 +83,7 @@ void mapreq(XMapRequestEvent* e)
 
   curtime = CurrentTime;
   c = getclient(e->window, 0);
-  trace("mapreq", c, e);
+  trace("mapreq", c, reinterpret_cast<XEvent*>(e));
 
   if (c == 0 || c->window != e->window) {
     /*
@@ -106,7 +106,7 @@ void mapreq(XMapRequestEvent* e)
         return;
       break;
     }
-    XReparentWindow(dpy, c->window, c->parent, BORDER - 1, BORDER - 1);
+    XReparentWindow(dpy, c->window, c->parent, _border - 1, _border - 1);
     XAddToSaveSet(dpy, c->window);
   /*
    * fall through...

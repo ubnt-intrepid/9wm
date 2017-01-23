@@ -1,11 +1,5 @@
 /* Copyright (c) 1994-1996 David Hogan, see README for licence details */
 
-#ifdef DEBUG
-#define trace(s, c, e) dotrace((s), (c), (e))
-#else
-#define trace(s, c, e)
-#endif
-
 /* 9wm.c */
 void usage();
 void initscreen(ScreenInfo* s, int i);
@@ -74,7 +68,7 @@ int handler(Display* d, XErrorEvent* e);
 void fatal(char const* s);
 void graberror(char const* f, int err);
 void showhints();
-void dotrace();
+void trace(char const* s, Client* c, XEvent* e);
 
 /* cursor.c */
 void initcurs(ScreenInfo* s);

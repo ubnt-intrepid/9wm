@@ -75,14 +75,9 @@ void graberror(char const* f, int err)
 #endif
 }
 
-#ifdef DEBUG_EV
-#include "showevent/ShowEvent.c"
-#endif
-
-#ifdef DEBUG
-
-void dotrace(char* s, Client* c, XEvent* e)
+void trace(char const* s, Client* c, XEvent* e)
 {
+#ifdef DEBUG
   fprintf(stderr, "9wm: %s: c=0x%p", s, c);
   if (c)
     fprintf(stderr, " x %d y %d dx %d dy %d w 0x%lx parent 0x%lx", c->x, c->y, c->dx, c->dy, c->window, c->parent);
@@ -93,5 +88,5 @@ void dotrace(char* s, Client* c, XEvent* e)
   }
 #endif
   fprintf(stderr, "\n");
-}
 #endif
+}

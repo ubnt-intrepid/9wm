@@ -1,9 +1,9 @@
 /* Copyright (c) 1994-1996 David Hogan, see README for licence details */
 
-#define BORDER _border
-#define INSET _inset
-#define MAXHIDDEN 32
-#define B3FIXED 5
+#include <cstdint>
+
+static constexpr std::size_t MAXHIDDEN = 32;
+static constexpr std::size_t B3FIXED = 5;
 
 #define AllButtonMask (Button1Mask | Button2Mask | Button3Mask | Button4Mask | Button5Mask)
 #define ButtonMask (ButtonPressMask | ButtonReleaseMask)
@@ -15,10 +15,6 @@
 #else
 #define DEFSHELL "/bin/sh"
 #endif
-
-typedef struct Client Client;
-typedef struct Menu Menu;
-typedef struct ScreenInfo ScreenInfo;
 
 struct Client {
   Window window;
@@ -54,7 +50,7 @@ struct Client {
   int ncmapwins;
   Window* cmapwins;
   Colormap* wmcmaps;
-  ScreenInfo* screen;
+  struct ScreenInfo* screen;
 };
 
 #define hidden(c) ((c)->state == IconicState)

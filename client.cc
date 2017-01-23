@@ -35,7 +35,7 @@ void draw_border(Client* c, int active)
   XSetWindowBackground(dpy, c->parent, active ? bordercolor : c->screen->white);
   XClearWindow(dpy, c->parent);
   if (c->hold && active)
-    XDrawRectangle(dpy, c->parent, c->screen->gc, INSET, INSET, c->dx + BORDER - INSET, c->dy + BORDER - INSET);
+    XDrawRectangle(dpy, c->parent, c->screen->gc, _inset, _inset, c->dx + _border - _inset, c->dy + _border - _inset);
 }
 
 void active(Client* c)

@@ -39,8 +39,8 @@ void button(XButtonEvent* e)
 
   Client* c = getclient(e->window, 0);
   if (c) {
-    e->x += c->x - BORDER + 1;
-    e->y += c->y - BORDER + 1;
+    e->x += c->x - _border + 1;
+    e->y += c->y - _border + 1;
   }
   else if (e->window != e->root) {
     Window dw;
@@ -133,11 +133,12 @@ void reshape(Client* c)
   active(c);
   top(c);
   XRaiseWindow(dpy, c->parent);
-  XMoveResizeWindow(dpy, c->parent, c->x - BORDER, c->y - BORDER, c->dx + 2 * (BORDER - 1), c->dy + 2 * (BORDER - 1));
+  XMoveResizeWindow(dpy, c->parent, c->x - _border, c->y - _border, c->dx + 2 * (_border - 1),
+                    c->dy + 2 * (_border - 1));
   if (c->dx == odx && c->dy == ody)
     sendconfig(c);
   else
-    XMoveResizeWindow(dpy, c->window, BORDER - 1, BORDER - 1, c->dx, c->dy);
+    XMoveResizeWindow(dpy, c->window, _border - 1, _border - 1, c->dx, c->dy);
 }
 
 void move(Client* c)
@@ -149,7 +150,7 @@ void move(Client* c)
   active(c);
   top(c);
   XRaiseWindow(dpy, c->parent);
-  XMoveWindow(dpy, c->parent, c->x - BORDER, c->y - BORDER);
+  XMoveWindow(dpy, c->parent, c->x - _border, c->y - _border);
   sendconfig(c);
 }
 

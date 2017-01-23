@@ -238,8 +238,8 @@ void sweepcalc(Client* c, int x, int y)
     sy = -1;
   }
 
-  dx -= 2 * BORDER;
-  dy -= 2 * BORDER;
+  dx -= 2 * _border;
+  dy -= 2 * _border;
 
   if (!c->is9term) {
     if (dx < c->min_dx)
@@ -259,8 +259,8 @@ void sweepcalc(Client* c, int x, int y)
     if (dy > c->size.max_height)
       dy = c->size.max_height;
   }
-  c->dx = sx * (dx + 2 * BORDER);
-  c->dy = sy * (dy + 2 * BORDER);
+  c->dx = sx * (dx + 2 * _border);
+  c->dy = sy * (dy + 2 * _border);
 }
 
 void dragcalc(Client* c, int x, int y)
@@ -314,10 +314,10 @@ int sweepdrag(Client* c, XButtonEvent* e0, void (*recalc)(Client*, int, int))
   oy = c->y;
   odx = c->dx;
   ody = c->dy;
-  c->x -= BORDER;
-  c->y -= BORDER;
-  c->dx += 2 * BORDER;
-  c->dy += 2 * BORDER;
+  c->x -= _border;
+  c->y -= _border;
+  c->dx += 2 * _border;
+  c->dy += 2 * _border;
   if (e0) {
     c->x = cx = e0->x;
     c->y = cy = e0->y;
@@ -365,10 +365,10 @@ int sweepdrag(Client* c, XButtonEvent* e0, void (*recalc)(Client*, int, int))
         c->y += c->dy;
         c->dy = -c->dy;
       }
-      c->x += BORDER;
-      c->y += BORDER;
-      c->dx -= 2 * BORDER;
-      c->dy -= 2 * BORDER;
+      c->x += _border;
+      c->y += _border;
+      c->dx -= 2 * _border;
+      c->dy -= 2 * _border;
       if (c->dx < 4 || c->dy < 4 || c->dx < c->min_dx || c->dy < c->min_dy)
         goto bad;
       return 1;
@@ -415,11 +415,11 @@ int drag(Client* c)
 
   s = c->screen;
   if (c->init)
-    setmouse(c->x - BORDER, c->y - BORDER, s);
+    setmouse(c->x - _border, c->y - _border, s);
   else {
     getmouse(&c->x, &c->y, s); /* start at current mouse pos */
-    c->x += BORDER;
-    c->y += BORDER;
+    c->x += _border;
+    c->y += _border;
   }
   status = grab(s->root, s->root, ButtonMask, s->boxcurs, 0);
   if (status != GrabSuccess) {
