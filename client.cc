@@ -24,8 +24,9 @@ void setactive(Client* c, int on)
       sendcmessage(c->window, wm_protocols, wm_take_focus, 0);
     cmapfocus(c);
   }
-  else
+  else {
     XGrabButton(dpy, AnyButton, AnyModifier, c->parent, False, ButtonMask, GrabModeAsync, GrabModeSync, None, None);
+  }
   draw_border(c, on);
 }
 
@@ -33,61 +34,66 @@ void draw_border(Client* c, int active)
 {
   XSetWindowBackground(dpy, c->parent, active ? bordercolor : c->screen->white);
   XClearWindow(dpy, c->parent);
-  if (c->hold && active)
+  if (c->hold && active) {
     XDrawRectangle(dpy, c->parent, c->screen->gc, _inset, _inset, c->dx + _border - _inset, c->dy + _border - _inset);
+  }
 }
 
 void active(Client* c)
 {
-  Client* cc;
-
-  if (c == 0) {
+  if (c == nullptr) {
     fprintf(stderr, "9wm: active(c==0)\n");
     return;
   }
-  if (c == current)
+
+  if (c == current) {
     return;
-  if (current) {
+  }
+
+  if (current != nullptr) {
     setactive(current, 0);
     if (current->screen != c->screen)
       cmapnofocus(current->screen);
   }
   setactive(c, 1);
-  for (cc = clients; cc; cc = cc->next)
+
+  for (Client* cc = clients; cc; cc = cc->next) {
     if (cc->revert == c)
       cc->revert = c->revert;
+  }
   c->revert = current;
-  while (c->revert && !normal(c->revert))
+  while (c->revert && !normal(c->revert)) {
     c->revert = c->revert->revert;
+  }
   current = c;
-#ifdef DEBUG
-  if (debug)
+
+  if (debug) {
     dump_revert();
-#endif
+  }
 }
 
-void nofocus(void)
+void nofocus()
 {
   static Window w = 0;
-  int mask;
-  XSetWindowAttributes attr;
-  Client* c;
 
   if (current) {
     setactive(current, 0);
-    for (c = current->revert; c; c = c->revert)
+    for (Client* c = current->revert; c != nullptr; c = c->revert) {
       if (normal(c)) {
         active(c);
         return;
       }
+    }
     cmapnofocus(current->screen);
     /*
      * if no candidates to revert to, fall through
      */
   }
-  current = 0;
+  current = nullptr;
+
   if (w == 0) {
-    mask = CWOverrideRedirect;
+    int mask = CWOverrideRedirect;
+    XSetWindowAttributes attr;
     attr.override_redirect = 1;
     w = XCreateWindow(dpy, screens[0].root, 0, 0, 1, 1, 0, CopyFromParent, InputOnly, CopyFromParent, mask, &attr);
     XMapWindow(dpy, w);
@@ -97,10 +103,9 @@ void nofocus(void)
 
 void top(Client* c)
 {
-  Client **l, *cc;
+  Client** l = &clients;
 
-  l = &clients;
-  for (cc = *l; cc; cc = *l) {
+  for (Client* cc = *l; cc != nullptr; cc = *l) {
     if (cc == c) {
       *l = c->next;
       c->next = clients;
@@ -114,25 +119,22 @@ void top(Client* c)
 
 Client* getclient(Window w, int create)
 {
-  Client* c;
-
-  if (w == 0 || getscreen(w))
+  if (w == 0 || getscreen(w)) {
     return 0;
+  }
 
-  for (c = clients; c; c = c->next)
+  for (Client* c = clients; c != nullptr; c = c->next) {
     if (c->window == w || c->parent == w)
       return c;
+  }
 
   if (!create)
     return 0;
 
-  c = (Client*)malloc(sizeof(Client));
+  Client* c = (Client*)malloc(sizeof(Client));
   memset(c, 0, sizeof(Client));
   c->window = w;
-  /*
-   * c->parent will be set by the caller
-   */
-  c->parent = None;
+  c->parent = None; // c->parent will be set by the caller
   c->reparenting = 0;
   c->state = WithdrawnState;
   c->init = 0;
@@ -151,32 +153,39 @@ Client* getclient(Window w, int create)
 
 void rmclient(Client* c)
 {
-  Client* cc;
-
-  for (cc = current; cc && cc->revert; cc = cc->revert)
+  for (Client* cc = current; cc && cc->revert; cc = cc->revert) {
     if (cc->revert == c)
       cc->revert = cc->revert->revert;
+  }
 
-  if (c == clients)
+  if (c == clients) {
     clients = c->next;
-  for (cc = clients; cc && cc->next; cc = cc->next)
-    if (cc->next == c)
+  }
+
+  for (Client* cc = clients; cc && cc->next; cc = cc->next) {
+    if (cc->next == c) {
       cc->next = cc->next->next;
+    }
+  }
 
-  if (hidden(c))
+  if (hidden(c)) {
     unhidec(c, 0);
+  }
 
-  if (c->parent != c->screen->root)
+  if (c->parent != c->screen->root) {
     XDestroyWindow(dpy, c->parent);
+  }
 
   c->parent = c->window = None; /* paranoia */
   if (current == c) {
     current = c->revert;
-    if (current == 0)
+    if (current == 0) {
       nofocus();
+    }
     else {
-      if (current->screen != c->screen)
+      if (current->screen != c->screen) {
         cmapnofocus(c->screen);
+      }
       setactive(current, 1);
     }
   }
@@ -196,30 +205,31 @@ void rmclient(Client* c)
   free(c);
 }
 
-#ifdef DEBUG
-void dump_revert(void)
+void dump_revert()
 {
-  Client* c;
-  int i;
-
-  i = 0;
-  for (c = current; c; c = c->revert) {
+#ifdef DEBUG
+  int i = 0;
+  for (Client* c = current; c != nullptr; c = c->revert) {
     fprintf(stderr, "%s(%lx:%d)", c->label ? c->label : "?", c->window, c->state);
-    if (i++ > 100)
+    if (i++ > 100) {
       break;
-    if (c->revert)
+    }
+    if (c->revert) {
       fprintf(stderr, " -> ");
+    }
   }
-  if (current == 0)
+  if (current == nullptr) {
     fprintf(stderr, "empty");
+  }
   fprintf(stderr, "\n");
+#endif
 }
 
 void dump_clients(void)
 {
-  Client* c;
-
-  for (c = clients; c; c = c->next)
+#ifdef DEBUG
+  for (Client* c = clients; c; c = c->next) {
     fprintf(stderr, "w 0x%lx parent 0x%lx @ (%d, %d)\n", c->window, c->parent, c->x, c->y);
-}
+  }
 #endif
+}

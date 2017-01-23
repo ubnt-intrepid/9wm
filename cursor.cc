@@ -101,17 +101,14 @@ static XColor bl, wh;
 
 Cursor getcursor(Cursordata* c, ScreenInfo* s)
 {
-  Pixmap f, m;
-
-  f = XCreatePixmapFromBitmapData(dpy, s->root, (char*)c->fore, c->width, c->width, 1, 0, 1);
-  m = XCreatePixmapFromBitmapData(dpy, s->root, (char*)c->mask, c->width, c->width, 1, 0, 1);
+  Pixmap f = XCreatePixmapFromBitmapData(dpy, s->root, (char*)c->fore, c->width, c->width, 1, 0, 1);
+  Pixmap m = XCreatePixmapFromBitmapData(dpy, s->root, (char*)c->mask, c->width, c->width, 1, 0, 1);
   return XCreatePixmapCursor(dpy, f, m, &bl, &wh, c->hot[0], c->hot[1]);
 }
 
 void initcurs(ScreenInfo* s)
 {
   XColor dummy;
-
   XAllocNamedColor(dpy, DefaultColormap(dpy, s->num), "black", &bl, &dummy);
   XAllocNamedColor(dpy, DefaultColormap(dpy, s->num), "white", &wh, &dummy);
 

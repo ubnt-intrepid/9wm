@@ -21,21 +21,26 @@ void fatal(char const* s)
 
 int handler(Display* d, XErrorEvent* e)
 {
-  char msg[80], req[80], number[80];
-
   if (initting && (e->request_code == X_ChangeWindowAttributes) && (e->error_code == BadAccess)) {
     fprintf(stderr, "9wm: it looks like there's already a window manager running;  9wm not started\n");
     exit(1);
   }
 
-  if (ignore_badwindow && (e->error_code == BadWindow || e->error_code == BadColor))
+  if (ignore_badwindow && (e->error_code == BadWindow || e->error_code == BadColor)) {
     return 0;
+  }
 
+  char msg[80];
   XGetErrorText(d, e->error_code, msg, sizeof(msg));
+
+  char number[80];
   sprintf(number, "%d", e->request_code);
+
+  char req[80];
   XGetErrorDatabaseText(d, "XRequest", number, "", req, sizeof(req));
-  if (req[0] == '\0')
+  if (req[0] == '\0') {
     sprintf(req, "<request-code-%d>", e->request_code);
+  }
 
   fprintf(stderr, "9wm: %s(0x%x): %s\n", req, (int)e->resourceid, msg);
 
@@ -78,14 +83,9 @@ void trace(char const* s, Client* c, XEvent* e)
 {
 #ifdef DEBUG
   fprintf(stderr, "9wm: %s: c=0x%p", s, c);
-  if (c)
+  if (c != nullptr) {
     fprintf(stderr, " x %d y %d dx %d dy %d w 0x%lx parent 0x%lx", c->x, c->y, c->dx, c->dy, c->window, c->parent);
-#ifdef DEBUG_EV
-  if (e) {
-    fprintf(stderr, "\n\t");
-    ShowEvent(e);
   }
-#endif
   fprintf(stderr, "\n");
 #endif
 }

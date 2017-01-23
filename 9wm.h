@@ -57,9 +57,9 @@ struct Client {
   struct ScreenInfo* screen;
 };
 
-#define hidden(c) ((c)->state == IconicState)
-#define withdrawn(c) ((c)->state == WithdrawnState)
-#define normal(c) ((c)->state == NormalState)
+inline bool hidden(Client* c) { return c->state == IconicState; }
+inline bool withdrawn(Client* c) { return c->state == WithdrawnState; }
+inline bool normal(Client* c) { return c->state == NormalState; }
 
 /* c->proto */
 #define Pdelete 1
@@ -90,7 +90,6 @@ struct ScreenInfo {
 
 // Nostalgia options
 enum { MODERN = 0, V1, BLIT };
-
 
 /* main.c */
 extern Display* dpy;
@@ -135,7 +134,6 @@ extern Menu b3menu;
 
 /* error.c */
 extern int ignore_badwindow;
-
 
 /* 9wm.c */
 void usage();
