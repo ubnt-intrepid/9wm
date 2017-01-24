@@ -16,10 +16,11 @@ void configurereq(XConfigureRequestEvent* e)
   // we don't set curtime as nothing here uses it
 
   Client* c = getclient(e->window, 0);
-  trace("configurereq", c, reinterpret_cast<XEvent*>(e));
+  trace(c, "configurereq", reinterpret_cast<XEvent*>(e));
 
   e->value_mask &= ~CWSibling;
 
+  XWindowChanges wc;
   if (c) {
     gravitate(c, 1);
     if (e->value_mask & CWX)
@@ -34,7 +35,6 @@ void configurereq(XConfigureRequestEvent* e)
       c->border = e->border_width;
     gravitate(c, 0);
 
-    XWindowChanges wc;
     if (e->value_mask & CWStackMode) {
       if (wc.stack_mode == Above)
         top(c);
@@ -78,7 +78,7 @@ void mapreq(XMapRequestEvent* e)
   curtime = CurrentTime;
 
   Client* c = getclient(e->window, 0);
-  trace("mapreq", c, reinterpret_cast<XEvent*>(e));
+  trace(c, "mapreq", reinterpret_cast<XEvent*>(e));
 
   if (c == 0 || c->window != e->window) {
     // workaround for stupid NCDware
@@ -453,7 +453,7 @@ void mainloop(int shape_event)
     case MapNotify:
     case MappingNotify:
       // not interested
-      trace("ignore", 0, &ev);
+      trace(nullptr, "ignore", &ev);
       break;
     default:
 #ifdef SHAPE

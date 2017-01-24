@@ -79,7 +79,7 @@ void graberror(char const* f, int err)
 #endif
 }
 
-void trace(char const* s, Client* c, XEvent* e)
+void trace(Client* c, char const* s, XEvent* e)
 {
 #ifdef DEBUG
   fprintf(stderr, "9wm: %s: c=0x%p", s, c);

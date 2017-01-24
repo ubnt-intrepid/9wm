@@ -67,7 +67,6 @@ inline bool normal(Client* c) { return c->state == NormalState; }
 
 struct Menu {
   char const** item;
-  char* (*gen)();
   int lasthit;
 };
 
@@ -191,19 +190,19 @@ void dump_revert();
 void dump_clients();
 
 /* grab.c */
-int menuhit(XButtonEvent* e, Menu* m);
-Client* selectwin(int release, int* shift, ScreenInfo* s);
+int menuhit(Menu* m, XButtonEvent* e);
+Client* selectwin(ScreenInfo* s, int release, int* shift);
 int sweep(Client* c);
 int drag(Client* c);
-void getmouse(int* x, int* y, ScreenInfo* s);
-void setmouse(int x, int y, ScreenInfo* s);
+void getmouse(ScreenInfo* s, int* x, int* y);
+void setmouse(ScreenInfo* s, int x, int y);
 
 /* error.c */
 int handler(Display* d, XErrorEvent* e);
 void fatal(char const* s);
 void graberror(char const* f, int err);
 void showhints();
-void trace(char const* s, Client* c, XEvent* e);
+void trace(Client* c, char const* s, XEvent* e);
 
 /* cursor.c */
 void initcurs(ScreenInfo* s);

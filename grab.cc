@@ -43,7 +43,7 @@ void ungrab(XButtonEvent* e)
   curtime = e->time;
 }
 
-int menuhit(XButtonEvent* e, Menu* m)
+int menuhit(Menu* m, XButtonEvent* e)
 {
   XEvent ev;
   int i, n, cur, old, wide, high, status, drawn, warp;
@@ -96,7 +96,7 @@ int menuhit(XButtonEvent* e, Menu* m)
     warp++;
   }
   if (warp)
-    setmouse(e->x, e->y, s);
+    setmouse(s, e->x, e->y);
   XMoveResizeWindow(dpy, s->menuwin, x, y, dx, dy);
   XSelectInput(dpy, s->menuwin, MenuMask);
   XMapRaised(dpy, s->menuwin);
@@ -177,7 +177,7 @@ int menuhit(XButtonEvent* e, Menu* m)
   }
 }
 
-Client* selectwin(int release, int* shift, ScreenInfo* s)
+Client* selectwin(ScreenInfo* s, int release, int* shift)
 {
   XEvent ev;
   XButtonEvent* e;
@@ -323,13 +323,13 @@ int sweepdrag(Client* c, XButtonEvent* e0, void (*recalc)(Client*, int, int))
     recalc(c, e0->x, e0->y);
   }
   else
-    getmouse(&cx, &cy, c->screen);
+    getmouse(c->screen, &cx, &cy);
   XGrabServer(dpy);
   drawbound(c);
   idle = 0;
   for (;;) {
     if (XCheckMaskEvent(dpy, ButtonMask, &ev) == 0) {
-      getmouse(&rx, &ry, c->screen);
+      getmouse(c->screen, &rx, &ry);
       if (rx != cx || ry != cy || ++idle > 300) {
         drawbound(c);
         if (rx == cx && ry == cy) {
@@ -383,52 +383,53 @@ bad:
 
 int sweep(Client* c)
 {
-  XEvent ev;
-  int status;
-  XButtonEvent* e;
-  ScreenInfo* s;
+  ScreenInfo* s = c->screen;
 
-  s = c->screen;
-  status = grab(s->root, s->root, ButtonMask, s->sweep0, 0);
+  int status = grab(s->root, s->root, ButtonMask, s->sweep0, 0);
   if (status != GrabSuccess) {
     graberror("sweep", status); /* */
     return 0;
   }
 
+  XEvent ev;
   XMaskEvent(dpy, ButtonMask, &ev);
-  e = &ev.xbutton;
+  XButtonEvent* e = &ev.xbutton;
   if (e->button != Button3) {
     ungrab(e);
     return 0;
   }
-  if (c->size.flags & (PMinSize | PBaseSize))
-    setmouse(e->x + c->min_dx, e->y + c->min_dy, s);
+
+  if (c->size.flags & (PMinSize | PBaseSize)) {
+    setmouse(s, e->x + c->min_dx, e->y + c->min_dy);
+  }
+
   XChangeActivePointerGrab(dpy, ButtonMask, s->boxcurs, e->time);
   return sweepdrag(c, e, sweepcalc);
 }
 
 int drag(Client* c)
 {
-  int status;
-  ScreenInfo* s;
+  ScreenInfo* s = c->screen;
 
-  s = c->screen;
-  if (c->init)
-    setmouse(c->x - _border, c->y - _border, s);
+  if (c->init) {
+    setmouse(s, c->x - _border, c->y - _border);
+  }
   else {
-    getmouse(&c->x, &c->y, s); /* start at current mouse pos */
+    getmouse(s, &c->x, &c->y); /* start at current mouse pos */
     c->x += _border;
     c->y += _border;
   }
-  status = grab(s->root, s->root, ButtonMask, s->boxcurs, 0);
+
+  int status = grab(s->root, s->root, ButtonMask, s->boxcurs, 0);
   if (status != GrabSuccess) {
     graberror("drag", status); /* */
     return 0;
   }
+
   return sweepdrag(c, 0, dragcalc);
 }
 
-void getmouse(int* x, int* y, ScreenInfo* s)
+void getmouse(ScreenInfo* s, int* x, int* y)
 {
   Window dw1, dw2;
   int t1, t2;
@@ -437,4 +438,4 @@ void getmouse(int* x, int* y, ScreenInfo* s)
   XQueryPointer(dpy, s->root, &dw1, &dw2, x, y, &t1, &t2, &t3);
 }
 
-void setmouse(int x, int y, ScreenInfo* s) { XWarpPointer(dpy, None, s->root, None, None, None, None, x, y); }
+void setmouse(ScreenInfo* s, int x, int y) { XWarpPointer(dpy, None, s->root, None, None, None, None, x, y); }

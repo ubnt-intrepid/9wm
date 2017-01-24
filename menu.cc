@@ -56,7 +56,7 @@ void button(XButtonEvent* e)
     return;
   case Button2:
     if ((e->state & (ShiftMask | ControlMask)) == (ShiftMask | ControlMask)) {
-      menuhit(e, &egg);
+      menuhit(&egg, e);
     }
     else {
       spawn(s, "9wm-mm");
@@ -71,25 +71,25 @@ void button(XButtonEvent* e)
   if (current && current->screen == s)
     cmapnofocus(s);
 
-  int n = menuhit(e, &b3menu);
+  int n = menuhit(&b3menu, e);
   switch (n) {
   case 0: /* New */
     spawn(s, termprog);
     break;
   case 1: /* Reshape */
-    reshape(selectwin(1, 0, s));
+    reshape(selectwin(s, 1, nullptr));
     break;
   case 2: /* Move */
-    move(selectwin(0, 0, s));
+    move(selectwin(s, 0, nullptr));
     break;
   case 3: /* Delete */
   {
     int shift = 0;
-    c = selectwin(1, &shift, s);
+    c = selectwin(s, 1, &shift);
     delete_(c, shift);
   } break;
   case 4: /* Hide */
-    hide(selectwin(1, 0, s));
+    hide(selectwin(s, 1, nullptr));
     break;
   default: /* unhide window */
     unhide(n - B3FIXED, 1);

@@ -18,7 +18,7 @@ int manage(Client* c, int mapped)
   XClassHint class_;
   XWMHints* hints;
 
-  trace("manage", c, 0);
+  trace(c, "manage", 0);
   XSelectInput(dpy, c->window, ColormapChangeMask | EnterWindowMask | PropertyChangeMask | FocusChangeMask);
 
   /*
@@ -101,7 +101,7 @@ int manage(Client* c, int mapped)
     int ymax = DisplayHeight(dpy, c->screen->num);
     int x, y;
 
-    getmouse(&x, &y, c->screen);
+    getmouse(c->screen, &x, &y);
 
     c->x = x - (c->dx / 2);
     c->y = y - (c->dy / 2);
