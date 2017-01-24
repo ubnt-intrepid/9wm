@@ -68,9 +68,11 @@ char const* fontlist[] = {
 
 void sigchld(int signum)
 {
-  while (0 < waitpid(-1, NULL, WNOHANG))
-    ;
+  while (waitpid(-1, NULL, WNOHANG) > 0) {
+  }
 }
+
+void sighandler(int signum) { signalled = 1; }
 
 void usage(void)
 {
@@ -203,14 +205,16 @@ void init_atoms(bool do_exit, bool do_restart)
   _9wm_hold_mode = XInternAtom(dpy, "_9WM_HOLD_MODE", False);
 }
 
-int main(int argc, char* argv[])
+void parse_args(int argc, char** argv, bool& do_exit, bool& do_restart, char const*& fname, char const*& borderstr)
 {
-  myargv = argv; /* for restart */
+  do_exit = false;
+  do_restart = false;
+  fname = nullptr;
+  borderstr = nullptr;
 
-  bool do_exit = false;
-  bool do_restart = false;
-  char const* fname = 0;
-  char* borderstr = nullptr;
+  nostalgia = 0;
+  debug = 0;
+  termprog = nullptr;
 
   int i;
   for (i = 1; i < argc; i++) {
@@ -240,6 +244,7 @@ int main(int argc, char* argv[])
       break;
     }
   }
+
   for (; i < argc; i++) {
     if (strcmp(argv[i], "exit") == 0) {
       do_exit = true;
@@ -255,12 +260,26 @@ int main(int argc, char* argv[])
   if (do_exit && do_restart) {
     usage();
   }
+}
 
+int main(int argc, char* argv[])
+{
+  // for restart
+  myargv = argv;
+
+  // parse command line options
+  bool do_exit, do_restart;
+  char const* fname;
+  char const* borderstr;
+  parse_args(argc, argv, do_exit, do_restart, fname, borderstr);
+
+  // get the path of shell from environment variable
   shell = (char*)getenv("SHELL");
   if (shell == nullptr) {
     shell = DEFSHELL;
   }
 
+  // set up signal handling
   if (signal(SIGTERM, sighandler) == SIG_IGN) {
     signal(SIGTERM, SIG_IGN);
   }
@@ -272,6 +291,7 @@ int main(int argc, char* argv[])
   }
   signal(SIGCHLD, sigchld);
 
+  // open display
   dpy = XOpenDisplay("");
   if (dpy == nullptr) {
     fatal("can't open display");
@@ -319,8 +339,7 @@ int main(int argc, char* argv[])
     scanwins(&screen);
   }
 
-  mainloop(shape_event);
-  return 0;
+  return mainloop(shape_event);
 }
 
 void initscreen(ScreenInfo* s, int i)
@@ -443,8 +462,6 @@ void sendconfig(Client* c)
 
   XSendEvent(dpy, c->window, False, StructureNotifyMask, (XEvent*)&ce);
 }
-
-void sighandler(int signo) { signalled = 1; }
 
 void getevent(XEvent* e)
 {

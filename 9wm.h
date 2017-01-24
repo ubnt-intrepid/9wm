@@ -139,12 +139,11 @@ ScreenInfo* getscreen(Window w);
 Time timestamp();
 void sendcmessage(Window w, Atom a, long x, int isroot);
 void sendconfig(Client* c);
-void sighandler(int signo);
 void getevent(XEvent* e);
 void cleanup();
 
 /* event.c */
-void mainloop(int shape_event);
+int mainloop(int shape_event);
 
 /* manage.c */
 int manage(Client* c, int mapped);

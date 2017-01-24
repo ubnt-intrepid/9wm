@@ -199,25 +199,26 @@ void cmap(XColormapEvent* e)
 {
   // we don't set curtime as nothing here uses it
 
-  struct _XColormapEvent* e_ = (struct _XColormapEvent*)e;
-  if (e_->new_) {
-    Client* c = getclient(e_->window, 0);
-    if (c) {
-      c->cmap = e_->colormap;
-      if (c == current) {
-        cmapfocus(c);
-      }
+  if (!reinterpret_cast<struct _XColormapEvent*>(e)->new_) {
+    return;
+  }
+
+  Client* c = getclient(e->window, 0);
+  if (c) {
+    c->cmap = e->colormap;
+    if (c == current) {
+      cmapfocus(c);
     }
-    else {
-      for (c = clients; c; c = c->next) {
-        for (int i = 0; i < c->ncmapwins; i++) {
-          if (c->cmapwins[i] == e_->window) {
-            c->wmcmaps[i] = e_->colormap;
-            if (c == current) {
-              cmapfocus(c);
-            }
-            return;
+  }
+  else {
+    for (c = clients; c; c = c->next) {
+      for (int i = 0; i < c->ncmapwins; i++) {
+        if (c->cmapwins[i] == e->window) {
+          c->wmcmaps[i] = e->colormap;
+          if (c == current) {
+            cmapfocus(c);
           }
+          return;
         }
       }
     }
@@ -346,7 +347,7 @@ void focusin(XFocusChangeEvent* e)
   }
 }
 
-void mainloop(int shape_event)
+int mainloop(int shape_event)
 {
   for (;;) {
     XEvent ev;
@@ -425,4 +426,5 @@ void mainloop(int shape_event)
       break;
     }
   }
+  return 0;
 }
