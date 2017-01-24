@@ -18,19 +18,16 @@ int nobuttons(XButtonEvent* e)
 
 int grab(Window w, Window constrain, int mask, Cursor curs, int t)
 {
-  int status;
-
-  if (t == 0)
+  if (t == 0) {
     t = timestamp();
-  status = XGrabPointer(dpy, w, False, mask, GrabModeAsync, GrabModeAsync, constrain, curs, t);
-  return status;
+  }
+  return XGrabPointer(dpy, w, False, mask, GrabModeAsync, GrabModeAsync, constrain, curs, t);
 }
 
 void ungrab(XButtonEvent* e)
 {
   XEvent ev;
-
-  if (!nobuttons(e))
+  if (!nobuttons(e)) {
     for (;;) {
       XMaskEvent(dpy, ButtonMask | ButtonMotionMask, &ev);
       if (ev.type == MotionNotify)
@@ -39,77 +36,90 @@ void ungrab(XButtonEvent* e)
       if (nobuttons(e))
         break;
     }
+  }
   XUngrabPointer(dpy, e->time);
   curtime = e->time;
 }
 
 int menuhit(Menu* m, XButtonEvent* e)
 {
-  XEvent ev;
-  int i, n, cur, old, wide, high, status, drawn, warp;
-  int x, y, dx, dy, xmax, ymax;
-  int tx, ty;
-  ScreenInfo* s;
-
-  if (font == 0)
+  if (font == nullptr) {
     return -1;
-  s = getscreen(e->root);
-  if (s == 0 || e->window == s->menuwin) /* ugly event mangling */
-    return -1;
-
-  dx = 0;
-  for (n = 0; m->item[n]; n++) {
-    wide = XTextWidth(font, m->item[n], strlen(m->item[n])) + 4;
-    if (wide > dx)
-      dx = wide;
   }
-  wide = dx;
-  cur = m->lasthit;
-  if (cur >= n)
-    cur = n - 1;
 
-  high = font->ascent + font->descent + 1;
-  dy = n * high;
-  x = e->x - wide / 2;
-  y = e->y - cur * high - high / 2;
-  warp = 0;
-  xmax = DisplayWidth(dpy, s->num);
-  ymax = DisplayHeight(dpy, s->num);
+  ScreenInfo* s = getscreen(e->root);
+  if (s == nullptr || e->window == s->menuwin) {
+    // ugly event mangling
+    return -1;
+  }
+
+  int num_items;
+  int dx = 0;
+  for (num_items = 0; m->item[num_items] != nullptr; num_items++) {
+    int w = XTextWidth(font, m->item[num_items], strlen(m->item[num_items])) + 4;
+    if (w > dx) {
+      dx = w;
+    }
+  }
+
+  int wide = dx;
+
+  int cur = m->lasthit;
+  if (cur >= num_items) {
+    cur = num_items - 1;
+  }
+
+  int high = font->ascent + font->descent + 1;
+
+  int dy = num_items * high;
+
+  int x = e->x - wide / 2;
+  int y = e->y - cur * high - high / 2;
+
+  bool warp = false;
+
+  int xmax = DisplayWidth(dpy, s->num);
   if (x < 0) {
     e->x -= x;
     x = 0;
-    warp++;
+    warp = true;
   }
   if (x + wide >= xmax) {
     e->x -= x + wide - xmax;
     x = xmax - wide;
-    warp++;
+    warp = true;
   }
+
+  int ymax = DisplayHeight(dpy, s->num);
   if (y < 0) {
     e->y -= y;
     y = 0;
-    warp++;
+    warp = true;
   }
   if (y + dy >= ymax) {
     e->y -= y + dy - ymax;
     y = ymax - dy;
-    warp++;
+    warp = true;
   }
-  if (warp)
+
+  if (warp) {
     setmouse(s, e->x, e->y);
+  }
+
   XMoveResizeWindow(dpy, s->menuwin, x, y, dx, dy);
   XSelectInput(dpy, s->menuwin, MenuMask);
   XMapRaised(dpy, s->menuwin);
-  status = grab(s->menuwin, None, MenuGrabMask, None, e->time);
+
+  int status = grab(s->menuwin, None, MenuGrabMask, None, e->time);
   if (status != GrabSuccess) {
-    /*
-     * graberror("menuhit", status);
-     */
+    // graberror("menuhit", status);
     XUnmapWindow(dpy, s->menuwin);
     return -1;
   }
-  drawn = 0;
+
+  bool drawn = false;
   for (;;) {
+    XEvent ev;
     XMaskEvent(dpy, MenuMask, &ev);
     switch (ev.type) {
     default:
@@ -120,47 +130,50 @@ int menuhit(Menu* m, XButtonEvent* e)
     case ButtonRelease:
       if (ev.xbutton.button != e->button)
         break;
-      x = ev.xbutton.x;
-      y = ev.xbutton.y;
-      i = y / high;
-      if (cur >= 0 && y >= cur * high - 3 && y < (cur + 1) * high + 3)
-        i = cur;
-      if (x < 0 || x > wide || y < -3)
-        i = -1;
-      else if (i < 0 || i >= n)
-        i = -1;
-      else
-        m->lasthit = i;
-      if (!nobuttons(&ev.xbutton))
-        i = -1;
-      ungrab(&ev.xbutton);
-      XUnmapWindow(dpy, s->menuwin);
-      return i;
-    case MotionNotify:
+      {
+        x = ev.xbutton.x;
+        y = ev.xbutton.y;
+        int i = y / high;
+        if (cur >= 0 && y >= cur * high - 3 && y < (cur + 1) * high + 3)
+          i = cur;
+        if (x < 0 || x > wide || y < -3)
+          i = -1;
+        else if (i < 0 || i >= num_items)
+          i = -1;
+        else
+          m->lasthit = i;
+        if (!nobuttons(&ev.xbutton))
+          i = -1;
+        ungrab(&ev.xbutton);
+        XUnmapWindow(dpy, s->menuwin);
+        return i;
+      }
+    case MotionNotify: {
       if (!drawn)
         break;
       x = ev.xbutton.x;
       y = ev.xbutton.y;
-      old = cur;
+      int old = cur;
       cur = y / high;
       if (old >= 0 && y >= old * high - 3 && y < (old + 1) * high + 3)
         cur = old;
       if (x < 0 || x > wide || y < -3)
         cur = -1;
-      else if (cur < 0 || cur >= n)
+      else if (cur < 0 || cur >= num_items)
         cur = -1;
       if (cur == old)
         break;
-      if (old >= 0 && old < n)
+      if (old >= 0 && old < num_items)
         XFillRectangle(dpy, s->menuwin, s->gc, 0, old * high, wide, high);
-      if (cur >= 0 && cur < n)
+      if (cur >= 0 && cur < num_items)
         XFillRectangle(dpy, s->menuwin, s->gc, 0, cur * high, wide, high);
-      break;
-    case Expose:
+    } break;
+    case Expose: {
       XClearWindow(dpy, s->menuwin);
-      for (i = 0; i < n; i++) {
+      for (int i = 0; i < num_items; i++) {
         char const* item = m->item[i];
 
+        int tx, ty;
         if (i < 5) {
           tx = (wide - XTextWidth(font, item, strlen(item))) / 2;
         }
@@ -170,9 +183,10 @@ int menuhit(Menu* m, XButtonEvent* e)
         ty = i * high + font->ascent + 1;
         XDrawString(dpy, s->menuwin, s->gc, tx, ty, item, strlen(item));
       }
-      if (cur >= 0 && cur < n)
+      if (cur >= 0 && cur < num_items)
         XFillRectangle(dpy, s->menuwin, s->gc, 0, cur * high, wide, high);
-      drawn = 1;
+      drawn = true;
+    } break;
     }
   }
 }
