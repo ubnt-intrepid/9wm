@@ -385,7 +385,7 @@ int main(int argc, char* argv[])
      * set selection so that 9term knows we're running
      */
     curtime = CurrentTime;
-    XSetSelectionOwner(dpy, _9wm_running, screens[0].menuwin, timestamp());
+    XSetSelectionOwner(dpy, _9wm_running, screens[0].menuwin, timestamp(dpy));
 
     XSync(dpy, False);
   }
@@ -410,7 +410,7 @@ ScreenInfo* getscreen(Window w)
   return nullptr;
 }
 
-Time timestamp()
+Time timestamp(Display* dpy)
 {
   if (curtime == CurrentTime) {
     XChangeProperty(dpy, screens[0].root, _9wm_running, _9wm_running, 8, PropModeAppend, (unsigned char*)"", 0);
@@ -432,7 +432,7 @@ void sendcmessage(Window w, Atom a, long x, int isroot)
   ev.xclient.message_type = a;
   ev.xclient.format = 32;
   ev.xclient.data.l[0] = x;
-  ev.xclient.data.l[1] = timestamp();
+  ev.xclient.data.l[1] = timestamp(dpy);
 
   long mask = 0L;
   if (isroot) {
@@ -539,7 +539,7 @@ void cleanup()
     }
   }
 
-  XSetInputFocus(dpy, PointerRoot, RevertToPointerRoot, timestamp());
+  XSetInputFocus(dpy, PointerRoot, RevertToPointerRoot, timestamp(dpy));
   for (auto& screen : screens) {
     cmapnofocus(&screen);
   }
@@ -618,5 +618,5 @@ void nofocus()
     w = XCreateWindow(dpy, screens[0].root, 0, 0, 1, 1, 0, CopyFromParent, InputOnly, CopyFromParent, mask, &attr);
     XMapWindow(dpy, w);
   }
-  XSetInputFocus(dpy, w, RevertToPointerRoot, timestamp());
+  XSetInputFocus(dpy, w, RevertToPointerRoot, timestamp(dpy));
 }

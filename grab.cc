@@ -16,10 +16,10 @@ int nobuttons(XButtonEvent* e)
   return (e->type == ButtonRelease) && (state & (state - 1)) == 0;
 }
 
-int grab(Window w, Window constrain, int mask, Cursor curs, int t)
+int grab(Display* dpy, Window w, Window constrain, int mask, Cursor curs, int t)
 {
   if (t == 0) {
-    t = timestamp();
+    t = timestamp(dpy);
   }
   return XGrabPointer(dpy, w, False, mask, GrabModeAsync, GrabModeAsync, constrain, curs, t);
 }
@@ -110,7 +110,7 @@ int menuhit(Menu* m, XButtonEvent* e)
   XSelectInput(dpy, s->menuwin, MenuMask);
   XMapRaised(dpy, s->menuwin);
 
-  int status = grab(s->menuwin, None, MenuGrabMask, None, e->time);
+  int status = grab(dpy, s->menuwin, None, MenuGrabMask, None, e->time);
   if (status != GrabSuccess) {
     // graberror("menuhit", status);
     XUnmapWindow(dpy, s->menuwin);
@@ -199,7 +199,7 @@ Client* selectwin(ScreenInfo* s, int release, int* shift)
   Window w;
   Client* c;
 
-  status = grab(s->root, s->root, ButtonMask, s->target, 0);
+  status = grab(dpy, s->root, s->root, ButtonMask, s->target, 0);
   if (status != GrabSuccess) {
     graberror("selectwin", status); /* */
     return 0;
@@ -399,7 +399,7 @@ int sweep(Client* c)
 {
   ScreenInfo* s = c->screen;
 
-  int status = grab(s->root, s->root, ButtonMask, s->sweep0, 0);
+  int status = grab(dpy, s->root, s->root, ButtonMask, s->sweep0, 0);
   if (status != GrabSuccess) {
     graberror("sweep", status); /* */
     return 0;
@@ -434,7 +434,7 @@ int drag(Client* c)
     c->y += _border;
   }
 
-  int status = grab(s->root, s->root, ButtonMask, s->boxcurs, 0);
+  int status = grab(dpy, s->root, s->root, ButtonMask, s->boxcurs, 0);
   if (status != GrabSuccess) {
     graberror("drag", status); /* */
     return 0;

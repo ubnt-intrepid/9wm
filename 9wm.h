@@ -135,7 +135,7 @@ extern int ignore_badwindow;
 /* 9wm.c */
 void usage();
 ScreenInfo* getscreen(Window w);
-Time timestamp();
+Time timestamp(Display* dpy);
 void sendcmessage(Window w, Atom a, long x, int isroot);
 void sendconfig(Client* c);
 XEvent getevent(Display* dpy);
