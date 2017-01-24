@@ -337,8 +337,7 @@ void focusin(XFocusChangeEvent* e)
 int mainloop()
 {
   for (;;) {
-    XEvent ev;
-    getevent(&ev);
+    XEvent ev = getevent(dpy);
 
     switch (ev.type) {
     case ButtonPress:

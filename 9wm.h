@@ -138,7 +138,7 @@ ScreenInfo* getscreen(Window w);
 Time timestamp();
 void sendcmessage(Window w, Atom a, long x, int isroot);
 void sendconfig(Client* c);
-void getevent(XEvent* e);
+XEvent getevent(Display* dpy);
 void cleanup();
 
 /* event.c */

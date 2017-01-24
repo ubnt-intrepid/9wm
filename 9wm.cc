@@ -37,7 +37,7 @@ int _border = 4;
 int _inset = 1;
 int curtime;
 int debug;
-int signalled;
+bool signalled = false;
 unsigned long bordercolor;
 
 Atom exit_9wm;
@@ -72,7 +72,7 @@ void sigchld(int signum)
   }
 }
 
-void sighandler(int signum) { signalled = 1; }
+void sighandler(int signum) { signalled = true; }
 
 void usage(void)
 {
@@ -462,44 +462,61 @@ void sendconfig(Client* c)
   XSendEvent(dpy, c->window, False, StructureNotifyMask, (XEvent*)&ce);
 }
 
-void getevent(XEvent* e)
-{
-  if (!signalled) {
-    if (QLength(dpy) > 0) {
-      XNextEvent(dpy, e);
-      return;
-    }
-    int fd = ConnectionNumber(dpy);
-    fd_set rfds;
-    FD_ZERO(&rfds);
-    FD_SET(fd, &rfds);
-    timeval t;
-    t.tv_sec = t.tv_usec = 0;
-    if (select(fd + 1, &rfds, nullptr, nullptr, &t) == 1) {
-      XNextEvent(dpy, e);
-      return;
-    }
-    XFlush(dpy);
+bool select_event(Display* dpy, timeval* t) {
+  int const fd = ConnectionNumber(dpy);
+  fd_set rfds;
+  FD_ZERO(&rfds);
+  FD_SET(fd, &rfds);
+  return select(fd + 1, &rfds, nullptr, nullptr, t) == 1;
+}
 
-    do {
-      FD_ZERO(&rfds);
-      FD_SET(fd, &rfds);
-      if (select(fd + 1, &rfds, nullptr, nullptr, nullptr) == 1) {
-        XNextEvent(dpy, e);
-        return;
+XEvent getevent(Display* dpy)
+{
+  if (signalled) {
+    fprintf(stderr, "9wm: exiting on signal\n");
+    cleanup();
+    exit(1);
+  }
+
+  if (QLength(dpy) > 0) {
+    XEvent e;
+    XNextEvent(dpy, &e);
+    return e;
+  }
+
+  timeval t;
+  t.tv_sec = 0;
+  t.tv_usec = 0;
+  if (select_event(dpy, &t)) {
+    XEvent e;
+    XNextEvent(dpy, &e);
+    return e;
+  }
+
+  XFlush(dpy);
+
+  for (;;) {
+    if (select_event(dpy, nullptr)) {
+      XEvent e;
+      XNextEvent(dpy, &e);
+      return e;
+    }
+
+    if (errno != EINTR) {
+      if (signalled) {
+        fprintf(stderr, "9wm: exiting on signal\n");
+        cleanup();
       }
-    } while (errno == EINTR);
-    if (!signalled) {
-      perror("9wm: select failed");
+      else {
+        perror("9wm: select failed");
+      }
       exit(1);
     }
   }
-  fprintf(stderr, "9wm: exiting on signal\n");
-  cleanup();
-  exit(1);
+  // unreachable!()
 }
 
-void cleanup(void)
+void cleanup()
 {
   // order of un-reparenting determines final stacking order...
   Client* cc[2] = {nullptr, nullptr};
