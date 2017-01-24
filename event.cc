@@ -400,16 +400,7 @@ int mainloop()
       trace(nullptr, "ignore", &ev);
       break;
     default:
-#ifdef SHAPE
-      if (shape && ev.type == shape_event) {
-        shapenotify((XShapeEvent*)&ev);
-      }
-      else {
-        fprintf(stderr, "9wm: unknown ev.type %d\n", ev.type);
-      }
-#else
       fprintf(stderr, "9wm: unknown ev.type %d\n", ev.type);
-#endif
       break;
     }
   }

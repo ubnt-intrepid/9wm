@@ -462,7 +462,8 @@ void sendconfig(Client* c)
   XSendEvent(dpy, c->window, False, StructureNotifyMask, (XEvent*)&ce);
 }
 
-bool select_event(Display* dpy, timeval* t) {
+bool select_event(Display* dpy, timeval* t)
+{
   int const fd = ConnectionNumber(dpy);
   fd_set rfds;
   FD_ZERO(&rfds);

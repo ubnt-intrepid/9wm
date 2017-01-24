@@ -131,14 +131,6 @@ int manage(Client* c, int mapped)
     XResizeWindow(dpy, c->window, c->dx, c->dy);
   XSetWindowBorderWidth(dpy, c->window, 0);
   XReparentWindow(dpy, c->window, c->parent, _border - 1, _border - 1);
-#ifdef SHAPE
-  if (shape) {
-    XShapeSelectInput(dpy, c->window, ShapeNotifyMask);
-    ignore_badwindow = 1; /* magic */
-    setshape(c);
-    ignore_badwindow = 0;
-  }
-#endif
   XAddToSaveSet(dpy, c->window);
   if (dohide)
     hide(c);

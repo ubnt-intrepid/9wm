@@ -19,39 +19,41 @@ void fatal(char const* s)
 
 void graberror(char const* f, int err)
 {
-#ifdef DEBUG /* sick of "bug" reports; grab errors "just happen" */
-  char* s;
-
+#ifdef DEBUG
+  // sick of "bug" reports; grab errors "just happen"
+  fprintf(stderr, "9wm: %s: grab error: ", f);
   switch (err) {
   case GrabNotViewable:
-    s = "not viewable";
+    fprintf(stderr, "not viewable");
     break;
   case AlreadyGrabbed:
-    s = "already grabbed";
+    fprintf(stderr, "already grabbed");
     break;
   case GrabFrozen:
-    s = "grab frozen";
+    fprintf(stderr, "grab frozen");
     break;
   case GrabInvalidTime:
-    s = "invalid time";
+    fprintf(stderr, "invalid time");
     break;
   case GrabSuccess:
     return;
   default:
-    fprintf(stderr, "9wm: %s: grab error: %d\n", f, err);
+    fprintf(stderr, "%d", err);
     return;
   }
-  fprintf(stderr, "9wm: %s: grab error: %s\n", f, s);
+  fprintf(stderr, "\n");
 #endif
 }
 
 void trace(Client* c, char const* s, XEvent* e)
 {
 #ifdef DEBUG
-  fprintf(stderr, "9wm: %s: c=0x%p", s, c);
   if (c != nullptr) {
-    fprintf(stderr, " x %d y %d dx %d dy %d w 0x%lx parent 0x%lx", c->x, c->y, c->dx, c->dy, c->window, c->parent);
+    fprintf(stderr, "9wm: %s: c=0x%p x %d y %d dx %d dy %d w 0x%lx parent 0x%lx\n", s, c, c->x, c->y, c->dx, c->dy,
+            c->window, c->parent);
   }
-  fprintf(stderr, "\n");
+  else {
+    fprintf(stderr, "9wm: %s: c=0x%p\n", s, c);
+  }
 #endif
 }

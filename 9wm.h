@@ -14,11 +14,7 @@ static constexpr std::size_t B3FIXED = 5;
 #define MenuMask (ButtonMask | ButtonMotionMask | ExposureMask)
 #define MenuGrabMask (ButtonMask | ButtonMotionMask | StructureNotifyMask)
 
-#ifdef Plan9
-#define DEFSHELL "/bin/rc"
-#else
-#define DEFSHELL "/bin/sh"
-#endif
+static constexpr char const* DEFSHELL = "/bin/sh";
 
 struct Client {
   Window window;
