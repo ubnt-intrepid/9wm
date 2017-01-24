@@ -72,35 +72,6 @@ void active(Client* c)
   }
 }
 
-void nofocus()
-{
-  static Window w = 0;
-
-  if (current) {
-    setactive(current, 0);
-    for (Client* c = current->revert; c != nullptr; c = c->revert) {
-      if (normal(c)) {
-        active(c);
-        return;
-      }
-    }
-    cmapnofocus(current->screen);
-    /*
-     * if no candidates to revert to, fall through
-     */
-  }
-  current = nullptr;
-
-  if (w == 0) {
-    int mask = CWOverrideRedirect;
-    XSetWindowAttributes attr;
-    attr.override_redirect = 1;
-    w = XCreateWindow(dpy, screens[0].root, 0, 0, 1, 1, 0, CopyFromParent, InputOnly, CopyFromParent, mask, &attr);
-    XMapWindow(dpy, w);
-  }
-  XSetInputFocus(dpy, w, RevertToPointerRoot, timestamp());
-}
-
 void top(Client* c)
 {
   Client** l = &clients;

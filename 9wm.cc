@@ -13,13 +13,16 @@
 #include <X11/Xatom.h>
 #include <X11/extensions/shape.h>
 #include "9wm.h"
+#include <vector>
 
 char const* version[] = {
     "9wm version 1.3.7, Copyright (c) 2016 multiple authors", 0,
 };
 
 Display* dpy;
-ScreenInfo* screens;
+
+std::vector<ScreenInfo> screens;
+
 int initting;
 XFontStruct* font;
 int nostalgia;
@@ -32,7 +35,6 @@ int _inset = 1;
 int curtime;
 int debug;
 int signalled;
-int num_screens;
 unsigned long bordercolor;
 
 Atom exit_9wm;
@@ -208,9 +210,9 @@ int main(int argc, char* argv[])
   shape = XShapeQueryExtension(dpy, &shape_event, &dummy);
 #endif
 
-  num_screens = ScreenCount(dpy);
-  screens = (ScreenInfo*)malloc(sizeof(ScreenInfo) * num_screens);
-  for (i = 0; i < num_screens; i++) {
+  int num_screens = ScreenCount(dpy);
+  screens = std::vector<ScreenInfo>(num_screens);
+  for (int i = 0; i < (int)screens.size(); ++i) {
     initscreen(&screens[i], i);
   }
 
@@ -259,7 +261,7 @@ void initscreen(ScreenInfo* s, int i)
 
   char* ds = DisplayString(dpy);
   char* colon = strrchr(ds, ':');
-  if (colon && num_screens > 1) {
+  if (colon && screens.size() > 1) {
     strcpy(s->display, "DISPLAY=");
     strcat(s->display, ds);
     colon = s->display + 8 + (colon - ds); /* use version in buf */
@@ -311,7 +313,7 @@ void initscreen(ScreenInfo* s, int i)
 
 ScreenInfo* getscreen(Window w)
 {
-  for (int i = 0; i < num_screens; i++) {
+  for (int i = 0; i < (int)screens.size(); i++) {
     if (screens[i].root == w) {
       return &screens[i];
     }
@@ -434,8 +436,83 @@ void cleanup(void)
   }
 
   XSetInputFocus(dpy, PointerRoot, RevertToPointerRoot, timestamp());
-  for (int i = 0; i < num_screens; i++) {
+  for (int i = 0; i < (int)screens.size(); i++) {
     cmapnofocus(&screens[i]);
   }
   XCloseDisplay(dpy);
+}
+
+void mapreq(XMapRequestEvent* e)
+{
+  curtime = CurrentTime;
+
+  Client* c = getclient(e->window, 0);
+  trace(c, "mapreq", reinterpret_cast<XEvent*>(e));
+
+  if (c == 0 || c->window != e->window) {
+    // workaround for stupid NCDware
+    fprintf(stderr, "9wm: bad mapreq c %p w %x, rescanning\n", (void*)c, (int)e->window);
+    for (int i = 0; i < (int)screens.size(); i++) {
+      scanwins(&screens[i]);
+    }
+    c = getclient(e->window, 0);
+    if (c == 0 || c->window != e->window) {
+      fprintf(stderr, "9wm: window not found after rescan\n");
+      return;
+    }
+  }
+
+  switch (c->state) {
+  case WithdrawnState:
+    if (c->parent == c->screen->root) {
+      if (!manage(c, 0))
+        return;
+      break;
+    }
+    XReparentWindow(dpy, c->window, c->parent, _border - 1, _border - 1);
+    XAddToSaveSet(dpy, c->window);
+  /*
+   * fall through...
+   */
+  case NormalState:
+    XMapWindow(dpy, c->window);
+    XMapRaised(dpy, c->parent);
+    top(c);
+    setwstate(c, NormalState);
+    if (c->trans != None && current && c->trans == current->window)
+      active(c);
+    break;
+  case IconicState:
+    unhidec(c, 1);
+    break;
+  }
+}
+
+void nofocus()
+{
+  static Window w = 0;
+
+  if (current) {
+    setactive(current, 0);
+    for (Client* c = current->revert; c != nullptr; c = c->revert) {
+      if (normal(c)) {
+        active(c);
+        return;
+      }
+    }
+    cmapnofocus(current->screen);
+    /*
+     * if no candidates to revert to, fall through
+     */
+  }
+  current = nullptr;
+
+  if (w == 0) {
+    int mask = CWOverrideRedirect;
+    XSetWindowAttributes attr;
+    attr.override_redirect = 1;
+    w = XCreateWindow(dpy, screens[0].root, 0, 0, 1, 1, 0, CopyFromParent, InputOnly, CopyFromParent, mask, &attr);
+    XMapWindow(dpy, w);
+  }
+  XSetInputFocus(dpy, w, RevertToPointerRoot, timestamp());
 }

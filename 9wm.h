@@ -92,8 +92,6 @@ enum { MODERN = 0, V1, BLIT };
 
 /* main.c */
 extern Display* dpy;
-extern ScreenInfo* screens;
-extern int num_screens;
 extern int initting;
 extern XFontStruct* font;
 extern int nostalgia;

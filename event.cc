@@ -11,6 +11,8 @@
 #include <X11/extensions/shape.h>
 #include "9wm.h"
 
+void mapreq(XMapRequestEvent* e);
+
 void configurereq(XConfigureRequestEvent* e)
 {
   // we don't set curtime as nothing here uses it
@@ -71,52 +73,6 @@ void configurereq(XConfigureRequestEvent* e)
   e->value_mask |= CWBorderWidth;
 
   XConfigureWindow(dpy, e->window, e->value_mask, &wc);
-}
-
-void mapreq(XMapRequestEvent* e)
-{
-  curtime = CurrentTime;
-
-  Client* c = getclient(e->window, 0);
-  trace(c, "mapreq", reinterpret_cast<XEvent*>(e));
-
-  if (c == 0 || c->window != e->window) {
-    // workaround for stupid NCDware
-    fprintf(stderr, "9wm: bad mapreq c %p w %x, rescanning\n", (void*)c, (int)e->window);
-    for (int i = 0; i < num_screens; i++) {
-      scanwins(&screens[i]);
-    }
-    c = getclient(e->window, 0);
-    if (c == 0 || c->window != e->window) {
-      fprintf(stderr, "9wm: window not found after rescan\n");
-      return;
-    }
-  }
-
-  switch (c->state) {
-  case WithdrawnState:
-    if (c->parent == c->screen->root) {
-      if (!manage(c, 0))
-        return;
-      break;
-    }
-    XReparentWindow(dpy, c->window, c->parent, _border - 1, _border - 1);
-    XAddToSaveSet(dpy, c->window);
-  /*
-   * fall through...
-   */
-  case NormalState:
-    XMapWindow(dpy, c->window);
-    XMapRaised(dpy, c->parent);
-    top(c);
-    setwstate(c, NormalState);
-    if (c->trans != None && current && c->trans == current->window)
-      active(c);
-    break;
-  case IconicState:
-    unhidec(c, 1);
-    break;
-  }
 }
 
 void unmap(XUnmapEvent* e)
