@@ -374,22 +374,6 @@ void setlabel(Client* c)
   c->label = const_cast<char*>(label);
 }
 
-#ifdef SHAPE
-void setshape(Client* c)
-{
-  int n, order;
-  XRectangle* rect;
-
-  /*
-   * don't try to add a border if the window is non-rectangular
-   */
-  rect = XShapeGetRectangles(dpy, c->window, ShapeBounding, &n, &order);
-  if (n > 1)
-    XShapeCombineShape(dpy, c->parent, ShapeBounding, _border - 1, _border - 1, c->window, ShapeBounding, ShapeSet);
-  XFree((void*)rect);
-}
-#endif
-
 int _getprop(Window w, Atom a, Atom type, long len, unsigned char** p)
 {
   Atom real_type;

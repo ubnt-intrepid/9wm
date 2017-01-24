@@ -303,19 +303,6 @@ void reparent(XReparentEvent* e)
   }
 }
 
-#ifdef SHAPE
-void shapenotify(XShapeEvent* e)
-{
-  // we don't set curtime as nothing here uses it
-  Client* c = getclient(e->window, 0);
-  if (c == 0) {
-    return;
-  }
-
-  setshape(c);
-}
-#endif
-
 void enter(XCrossingEvent* e)
 {
   curtime = e->time;
@@ -347,11 +334,12 @@ void focusin(XFocusChangeEvent* e)
   }
 }
 
-int mainloop(int shape_event)
+int mainloop()
 {
   for (;;) {
     XEvent ev;
     getevent(&ev);
+
     switch (ev.type) {
     case ButtonPress:
       button(&ev.xbutton);

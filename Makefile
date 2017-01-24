@@ -1,6 +1,6 @@
 CXX				= g++
 TARGET 		= 9wm
-CXXFLAGS += -std=c++14 -DSHAPE -Wall -pedantic
+CXXFLAGS += -std=c++14 -Wall -pedantic
 LDFLAGS 	= -lXext -lX11
 SRCS			= 9wm.cc event.cc manage.cc menu.cc client.cc grab.cc cursor.cc error.cc
 OBJS			= $(SRCS:.cc=.o)

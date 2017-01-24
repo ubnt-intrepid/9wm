@@ -134,7 +134,6 @@ extern int ignore_badwindow;
 
 /* 9wm.c */
 void usage();
-void initscreen(ScreenInfo* s, int i);
 ScreenInfo* getscreen(Window w);
 Time timestamp();
 void sendcmessage(Window w, Atom a, long x, int isroot);
@@ -143,7 +142,7 @@ void getevent(XEvent* e);
 void cleanup();
 
 /* event.c */
-int mainloop(int shape_event);
+int mainloop();
 
 /* manage.c */
 int manage(Client* c, int mapped);

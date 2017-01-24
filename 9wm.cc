@@ -205,6 +205,68 @@ void init_atoms(bool do_exit, bool do_restart)
   _9wm_hold_mode = XInternAtom(dpy, "_9WM_HOLD_MODE", False);
 }
 
+ScreenInfo new_screen(int i)
+{
+  ScreenInfo s;
+  s.num = i;
+  s.root = RootWindow(dpy, i);
+  s.def_cmap = DefaultColormap(dpy, i);
+  s.min_cmaps = MinCmapsOfScreen(ScreenOfDisplay(dpy, i));
+
+  char* ds = DisplayString(dpy);
+  char* colon = strrchr(ds, ':');
+  if (colon && screens.size() > 1) {
+    strcpy(s.display, "DISPLAY=");
+    strcat(s.display, ds);
+    colon = s.display + 8 + (colon - ds); /* use version in buf */
+
+    char* dot1 = strchr(colon, '.'); /* first period after colon */
+    if (!dot1) {
+      dot1 = colon + strlen(colon); /* if not there, append */
+    }
+    sprintf(dot1, ".%d", i);
+  }
+  else {
+    s.display[0] = '\0';
+  }
+
+  s.black = BlackPixel(dpy, i);
+  s.white = WhitePixel(dpy, i);
+
+  {
+    XGCValues gv;
+    gv.foreground = s.black ^ s.white;
+    gv.background = s.white;
+    gv.function = GXxor;
+    gv.line_width = 0;
+    gv.subwindow_mode = IncludeInferiors;
+
+    unsigned long mask = GCForeground | GCBackground | GCFunction | GCLineWidth | GCSubwindowMode;
+    if (font != 0) {
+      gv.font = font->fid;
+      mask |= GCFont;
+    }
+    s.gc = XCreateGC(dpy, s.root, mask, &gv);
+  }
+
+  initcurs(&s);
+
+  {
+    XSetWindowAttributes attr;
+    attr.cursor = s.arrow;
+    attr.event_mask = SubstructureRedirectMask | SubstructureNotifyMask | ColormapChangeMask | ButtonPressMask |
+                      ButtonReleaseMask | PropertyChangeMask;
+    unsigned long mask = CWCursor | CWEventMask;
+    XChangeWindowAttributes(dpy, s.root, mask, &attr);
+  }
+
+  XSync(dpy, False);
+
+  s.menuwin = XCreateSimpleWindow(dpy, s.root, 0, 0, 1, 1, 1, s.black, s.white);
+
+  return s;
+}
+
 void parse_args(int argc, char** argv, bool& do_exit, bool& do_restart, char const*& fname, char const*& borderstr)
 {
   do_exit = false;
@@ -298,9 +360,8 @@ int main(int argc, char* argv[])
   }
 
   // initialize
-  XSetErrorHandler(error_handler_init);
-  int shape_event;
   {
+    XSetErrorHandler(error_handler_init);
     curtime = -1; /* don't care */
 
     init_atoms(do_exit, do_restart);
@@ -311,15 +372,11 @@ int main(int argc, char* argv[])
       _inset--;
     }
 
-#ifdef SHAPE
-    int dummy;
-    shape = XShapeQueryExtension(dpy, &shape_event, &dummy);
-#endif
-
-    int num_screens = ScreenCount(dpy);
-    screens = std::vector<ScreenInfo>(num_screens);
-    for (int i = 0; i < (int)screens.size(); ++i) {
-      initscreen(&screens[i], i);
+    size_t num_screens = ScreenCount(dpy);
+    screens = std::vector<ScreenInfo>();
+    screens.reserve(num_screens);
+    for (size_t i = 0; i < num_screens; ++i) {
+      screens.push_back(new_screen(i));
     }
 
     init_borercolor(borderstr);
@@ -329,76 +386,18 @@ int main(int argc, char* argv[])
      */
     curtime = CurrentTime;
     XSetSelectionOwner(dpy, _9wm_running, screens[0].menuwin, timestamp());
+
+    XSync(dpy, False);
   }
-  XSync(dpy, False);
+
   XSetErrorHandler(error_handler);
 
   nofocus();
-
   for (auto& screen : screens) {
     scanwins(&screen);
   }
 
-  return mainloop(shape_event);
-}
-
-void initscreen(ScreenInfo* s, int i)
-{
-  s->num = i;
-  s->root = RootWindow(dpy, i);
-  s->def_cmap = DefaultColormap(dpy, i);
-  s->min_cmaps = MinCmapsOfScreen(ScreenOfDisplay(dpy, i));
-
-  char* ds = DisplayString(dpy);
-  char* colon = strrchr(ds, ':');
-  if (colon && screens.size() > 1) {
-    strcpy(s->display, "DISPLAY=");
-    strcat(s->display, ds);
-    colon = s->display + 8 + (colon - ds); /* use version in buf */
-
-    char* dot1 = strchr(colon, '.'); /* first period after colon */
-    if (!dot1) {
-      dot1 = colon + strlen(colon); /* if not there, append */
-    }
-    sprintf(dot1, ".%d", i);
-  }
-  else {
-    s->display[0] = '\0';
-  }
-
-  s->black = BlackPixel(dpy, i);
-  s->white = WhitePixel(dpy, i);
-
-  XGCValues gv;
-  gv.foreground = s->black ^ s->white;
-  gv.background = s->white;
-  gv.function = GXxor;
-  gv.line_width = 0;
-  gv.subwindow_mode = IncludeInferiors;
-
-  {
-    unsigned long mask = GCForeground | GCBackground | GCFunction | GCLineWidth | GCSubwindowMode;
-    if (font != 0) {
-      gv.font = font->fid;
-      mask |= GCFont;
-    }
-    s->gc = XCreateGC(dpy, s->root, mask, &gv);
-  }
-
-  initcurs(s);
-
-  {
-    XSetWindowAttributes attr;
-    attr.cursor = s->arrow;
-    attr.event_mask = SubstructureRedirectMask | SubstructureNotifyMask | ColormapChangeMask | ButtonPressMask |
-                      ButtonReleaseMask | PropertyChangeMask;
-    unsigned long mask = CWCursor | CWEventMask;
-    XChangeWindowAttributes(dpy, s->root, mask, &attr);
-  }
-
-  XSync(dpy, False);
-
-  s->menuwin = XCreateSimpleWindow(dpy, s->root, 0, 0, 1, 1, 1, s->black, s->white);
+  return mainloop();
 }
 
 ScreenInfo* getscreen(Window w)
@@ -411,7 +410,7 @@ ScreenInfo* getscreen(Window w)
   return nullptr;
 }
 
-Time timestamp(void)
+Time timestamp()
 {
   if (curtime == CurrentTime) {
     XChangeProperty(dpy, screens[0].root, _9wm_running, _9wm_running, 8, PropModeAppend, (unsigned char*)"", 0);
