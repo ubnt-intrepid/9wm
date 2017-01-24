@@ -9,6 +9,8 @@ BIN = $(DESTDIR)/usr/bin/
 MANDIR = $(DESTDIR)/usr/share/man/man1
 MANSUFFIX = 1
 
+SERVICE := vncserver@:2.service
+
 all: $(TARGET)
 
 $(TARGET): $(OBJS)
@@ -31,4 +33,7 @@ clean:
 format:
 	clang-format -i *.cc *.h
 
-.PHONY: all 9wm install install.man clean format
+restart:
+	systemctl --user restart $(SERVICE) || true
+
+.PHONY: all 9wm install install.man clean format restart

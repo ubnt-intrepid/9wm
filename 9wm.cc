@@ -12,6 +12,10 @@
 #include <X11/Xutil.h>
 #include <X11/Xatom.h>
 #include <X11/extensions/shape.h>
+#include <X11/X.h>
+#include <X11/Xlib.h>
+#include <X11/Xutil.h>
+#include <X11/Xproto.h>
 #include "9wm.h"
 #include <vector>
 
@@ -23,7 +27,6 @@ Display* dpy;
 
 std::vector<ScreenInfo> screens;
 
-int initting;
 XFontStruct* font;
 int nostalgia;
 char** myargv;
@@ -73,6 +76,60 @@ void usage(void)
 {
   fprintf(stderr, "usage: 9wm [-version] [-nostalgia] [-font fname] [-term prog] [-border color] [exit|restart]\n");
   exit(1);
+}
+
+int ignore_badwindow;
+
+int error_handler_init(Display* d, XErrorEvent* e)
+{
+  if ((e->request_code == X_ChangeWindowAttributes) && (e->error_code == BadAccess)) {
+    fprintf(stderr, "9wm: it looks like there's already a window manager running;  9wm not started\n");
+    exit(1);
+  }
+
+  if (ignore_badwindow && (e->error_code == BadWindow || e->error_code == BadColor)) {
+    return 0;
+  }
+
+  char msg[80];
+  XGetErrorText(d, e->error_code, msg, sizeof(msg));
+
+  char number[80];
+  sprintf(number, "%d", e->request_code);
+
+  char req[80];
+  XGetErrorDatabaseText(d, "XRequest", number, "", req, sizeof(req));
+  if (req[0] == '\0') {
+    sprintf(req, "<request-code-%d>", e->request_code);
+  }
+
+  fprintf(stderr, "9wm: %s(0x%x): %s\n", req, (int)e->resourceid, msg);
+
+  fprintf(stderr, "9wm: failure during initialisation; aborting\n");
+  exit(1);
+}
+
+int error_handler(Display* d, XErrorEvent* e)
+{
+  if (ignore_badwindow && (e->error_code == BadWindow || e->error_code == BadColor)) {
+    return 0;
+  }
+
+  char msg[80];
+  XGetErrorText(d, e->error_code, msg, sizeof(msg));
+
+  char number[80];
+  sprintf(number, "%d", e->request_code);
+
+  char req[80];
+  XGetErrorDatabaseText(d, "XRequest", number, "", req, sizeof(req));
+  if (req[0] == '\0') {
+    sprintf(req, "<request-code-%d>", e->request_code);
+  }
+
+  fprintf(stderr, "9wm: %s(0x%x): %s\n", req, (int)e->resourceid, msg);
+
+  return 0;
 }
 
 int main(int argc, char* argv[])
@@ -134,14 +191,6 @@ int main(int argc, char* argv[])
     shell = DEFSHELL;
   }
 
-  dpy = XOpenDisplay("");
-  if (dpy == nullptr) {
-    fatal("can't open display");
-  }
-
-  initting = 1;
-
-  XSetErrorHandler(handler);
   if (signal(SIGTERM, sighandler) == SIG_IGN) {
     signal(SIGTERM, SIG_IGN);
   }
@@ -152,6 +201,14 @@ int main(int argc, char* argv[])
     signal(SIGHUP, SIG_IGN);
   }
   signal(SIGCHLD, sigchld);
+
+
+  dpy = XOpenDisplay("");
+  if (dpy == nullptr) {
+    fatal("can't open display");
+  }
+
+  XSetErrorHandler(error_handler_init);
 
   exit_9wm = XInternAtom(dpy, "9WM_EXIT", False);
   restart_9wm = XInternAtom(dpy, "9WM_RESTART", False);
@@ -239,7 +296,8 @@ int main(int argc, char* argv[])
   XSetSelectionOwner(dpy, _9wm_running, screens[0].menuwin, timestamp());
 
   XSync(dpy, False);
-  initting = 0;
+
+  XSetErrorHandler(error_handler);
 
   nofocus();
 
