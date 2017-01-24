@@ -132,15 +132,85 @@ int error_handler(Display* d, XErrorEvent* e)
   return 0;
 }
 
+void init_font(char const* fname)
+{
+  font = nullptr;
+  if (fname != nullptr) {
+    font = XLoadQueryFont(dpy, fname);
+    if (font == 0) {
+      fprintf(stderr, "9wm: warning: can't load font %s\n", fname);
+    }
+  }
+  if (font == 0) {
+    for (int i = 0;; i++) {
+      char const* fname = fontlist[i];
+      if (fname == 0) {
+        fprintf(stderr, "9wm: warning: can't find a font\n");
+        break;
+      }
+      font = XLoadQueryFont(dpy, fname);
+      if (font != 0) {
+        break;
+      }
+    }
+  }
+}
+
+// Setup color for border
+void init_borercolor(char const* borderstr)
+{
+  bordercolor = screens[0].black;
+  if (borderstr != nullptr) {
+    XColor color;
+    Colormap cmap = DefaultColormap(dpy, screens[0].num);
+    Status stpc = 0;
+    if (cmap != 0)
+      stpc = XParseColor(dpy, cmap, borderstr, &color);
+    Status stac = 0;
+    if (stpc != 0)
+      stac = XAllocColor(dpy, cmap, &color);
+    if (stac != 0)
+      bordercolor = color.pixel;
+  }
+}
+
+void init_atoms(bool do_exit, bool do_restart)
+{
+  exit_9wm = XInternAtom(dpy, "9WM_EXIT", False);
+  if (do_exit) {
+    sendcmessage(DefaultRootWindow(dpy), exit_9wm, 0L, 1);
+    XSync(dpy, False);
+    exit(0);
+  }
+
+  restart_9wm = XInternAtom(dpy, "9WM_RESTART", False);
+  if (do_restart) {
+    sendcmessage(DefaultRootWindow(dpy), restart_9wm, 0L, 1);
+    XSync(dpy, False);
+    exit(0);
+  }
+
+  wm_state = XInternAtom(dpy, "WM_STATE", False);
+  wm_change_state = XInternAtom(dpy, "WM_CHANGE_STATE", False);
+  wm_protocols = XInternAtom(dpy, "WM_PROTOCOLS", False);
+  wm_delete = XInternAtom(dpy, "WM_DELETE_WINDOW", False);
+  wm_take_focus = XInternAtom(dpy, "WM_TAKE_FOCUS", False);
+  wm_colormaps = XInternAtom(dpy, "WM_COLORMAP_WINDOWS", False);
+  wm_moveresize = XInternAtom(dpy, "_NET_WM_MOVERESIZE", False);
+  active_window = XInternAtom(dpy, "_NET_ACTIVE_WINDOW", False);
+  utf8_string = XInternAtom(dpy, "UTF8_STRING", False);
+  _9wm_running = XInternAtom(dpy, "_9WM_RUNNING", False);
+  _9wm_hold_mode = XInternAtom(dpy, "_9WM_HOLD_MODE", False);
+}
+
 int main(int argc, char* argv[])
 {
   myargv = argv; /* for restart */
 
-  int do_exit = 0;
-  int do_restart = 0;
+  bool do_exit = false;
+  bool do_restart = false;
   char const* fname = 0;
   char* borderstr = nullptr;
-  font = 0;
 
   int i;
   for (i = 1; i < argc; i++) {
@@ -172,10 +242,10 @@ int main(int argc, char* argv[])
   }
   for (; i < argc; i++) {
     if (strcmp(argv[i], "exit") == 0) {
-      do_exit++;
+      do_exit = true;
     }
     else if (strcmp(argv[i], "restart") == 0) {
-      do_restart++;
+      do_restart = true;
     }
     else {
       usage();
@@ -202,111 +272,54 @@ int main(int argc, char* argv[])
   }
   signal(SIGCHLD, sigchld);
 
-
   dpy = XOpenDisplay("");
   if (dpy == nullptr) {
     fatal("can't open display");
   }
 
+  // initialize
   XSetErrorHandler(error_handler_init);
+  int shape_event;
+  {
+    curtime = -1; /* don't care */
 
-  exit_9wm = XInternAtom(dpy, "9WM_EXIT", False);
-  restart_9wm = XInternAtom(dpy, "9WM_RESTART", False);
+    init_atoms(do_exit, do_restart);
+    init_font(fname);
 
-  curtime = -1; /* don't care */
-  if (do_exit) {
-    sendcmessage(DefaultRootWindow(dpy), exit_9wm, 0L, 1);
-    XSync(dpy, False);
-    exit(0);
-  }
-  if (do_restart) {
-    sendcmessage(DefaultRootWindow(dpy), restart_9wm, 0L, 1);
-    XSync(dpy, False);
-    exit(0);
-  }
-
-  wm_state = XInternAtom(dpy, "WM_STATE", False);
-  wm_change_state = XInternAtom(dpy, "WM_CHANGE_STATE", False);
-  wm_protocols = XInternAtom(dpy, "WM_PROTOCOLS", False);
-  wm_delete = XInternAtom(dpy, "WM_DELETE_WINDOW", False);
-  wm_take_focus = XInternAtom(dpy, "WM_TAKE_FOCUS", False);
-  wm_colormaps = XInternAtom(dpy, "WM_COLORMAP_WINDOWS", False);
-  wm_moveresize = XInternAtom(dpy, "_NET_WM_MOVERESIZE", False);
-  active_window = XInternAtom(dpy, "_NET_ACTIVE_WINDOW", False);
-  utf8_string = XInternAtom(dpy, "UTF8_STRING", False);
-  _9wm_running = XInternAtom(dpy, "_9WM_RUNNING", False);
-  _9wm_hold_mode = XInternAtom(dpy, "_9WM_HOLD_MODE", False);
-
-  if (fname != 0) {
-    if ((font = XLoadQueryFont(dpy, fname)) == 0) {
-      fprintf(stderr, "9wm: warning: can't load font %s\n", fname);
+    if (nostalgia == BLIT) {
+      _border--;
+      _inset--;
     }
-  }
-
-  if (font == 0) {
-    int i = 0;
-    for (;;) {
-      char const* fname = fontlist[i++];
-      if (fname == 0) {
-        fprintf(stderr, "9wm: warning: can't find a font\n");
-        break;
-      }
-      font = XLoadQueryFont(dpy, fname);
-      if (font != 0) {
-        break;
-      }
-    }
-  }
-  if (nostalgia == BLIT) {
-    _border--;
-    _inset--;
-  }
 
 #ifdef SHAPE
-  int shape_event, dummy;
-  shape = XShapeQueryExtension(dpy, &shape_event, &dummy);
+    int dummy;
+    shape = XShapeQueryExtension(dpy, &shape_event, &dummy);
 #endif
 
-  int num_screens = ScreenCount(dpy);
-  screens = std::vector<ScreenInfo>(num_screens);
-  for (int i = 0; i < (int)screens.size(); ++i) {
-    initscreen(&screens[i], i);
-  }
+    int num_screens = ScreenCount(dpy);
+    screens = std::vector<ScreenInfo>(num_screens);
+    for (int i = 0; i < (int)screens.size(); ++i) {
+      initscreen(&screens[i], i);
+    }
 
-  /*
-   * Setup color for border
-   */
-  bordercolor = screens[0].black;
-  if (borderstr != NULL) {
-    XColor color;
-    Colormap cmap = DefaultColormap(dpy, screens[0].num);
-    Status stpc = 0;
-    if (cmap != 0)
-      stpc = XParseColor(dpy, cmap, borderstr, &color);
-    Status stac = 0;
-    if (stpc != 0)
-      stac = XAllocColor(dpy, cmap, &color);
-    if (stac != 0)
-      bordercolor = color.pixel;
-  }
-  /*
-   * set selection so that 9term knows we're running
-   */
-  curtime = CurrentTime;
-  XSetSelectionOwner(dpy, _9wm_running, screens[0].menuwin, timestamp());
+    init_borercolor(borderstr);
 
+    /*
+     * set selection so that 9term knows we're running
+     */
+    curtime = CurrentTime;
+    XSetSelectionOwner(dpy, _9wm_running, screens[0].menuwin, timestamp());
+  }
   XSync(dpy, False);
-
   XSetErrorHandler(error_handler);
 
   nofocus();
 
-  for (i = 0; i < num_screens; i++) {
-    scanwins(&screens[i]);
+  for (auto& screen : screens) {
+    scanwins(&screen);
   }
 
   mainloop(shape_event);
-
   return 0;
 }
 
@@ -371,9 +384,9 @@ void initscreen(ScreenInfo* s, int i)
 
 ScreenInfo* getscreen(Window w)
 {
-  for (int i = 0; i < (int)screens.size(); i++) {
-    if (screens[i].root == w) {
-      return &screens[i];
+  for (auto& screen : screens) {
+    if (screen.root == w) {
+      return &screen;
     }
   }
   return nullptr;
@@ -494,8 +507,8 @@ void cleanup(void)
   }
 
   XSetInputFocus(dpy, PointerRoot, RevertToPointerRoot, timestamp());
-  for (int i = 0; i < (int)screens.size(); i++) {
-    cmapnofocus(&screens[i]);
+  for (auto& screen : screens) {
+    cmapnofocus(&screen);
   }
   XCloseDisplay(dpy);
 }
@@ -510,8 +523,8 @@ void mapreq(XMapRequestEvent* e)
   if (c == 0 || c->window != e->window) {
     // workaround for stupid NCDware
     fprintf(stderr, "9wm: bad mapreq c %p w %x, rescanning\n", (void*)c, (int)e->window);
-    for (int i = 0; i < (int)screens.size(); i++) {
-      scanwins(&screens[i]);
+    for (auto& screen : screens) {
+      scanwins(&screen);
     }
     c = getclient(e->window, 0);
     if (c == 0 || c->window != e->window) {
