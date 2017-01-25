@@ -8,12 +8,13 @@
 #include <X11/Xutil.h>
 #include "9wm.h"
 
+#include <algorithm>
+#include <string>
+
 int nobuttons(XButtonEvent* e)
 {
-  int state;
-
-  state = (e->state & AllButtonMask);
-  return (e->type == ButtonRelease) && (state & (state - 1)) == 0;
+  int state = e->state & AllButtonMask;
+  return (e->type == ButtonRelease) && ((state & (state - 1)) == 0);
 }
 
 int grab(Display* dpy, Window w, Window constrain, int mask, Cursor curs, int t)
@@ -26,19 +27,26 @@ int grab(Display* dpy, Window w, Window constrain, int mask, Cursor curs, int t)
 
 void ungrab(XButtonEvent* e)
 {
-  XEvent ev;
-  if (!nobuttons(e)) {
-    for (;;) {
-      XMaskEvent(dpy, ButtonMask | ButtonMotionMask, &ev);
-      if (ev.type == MotionNotify)
-        continue;
-      e = &ev.xbutton;
-      if (nobuttons(e))
-        break;
+  if (nobuttons(e)) {
+    XUngrabPointer(dpy, e->time);
+    curtime = e->time;
+    return;
+  }
+
+  for (;;) {
+    XEvent ev;
+    XMaskEvent(dpy, ButtonMask | ButtonMotionMask, &ev);
+    if (ev.type == MotionNotify) {
+      continue;
+    }
+
+    XButtonEvent* e = &ev.xbutton;
+    if (nobuttons(e)) {
+      XUngrabPointer(dpy, e->time);
+      curtime = e->time;
+      return;
     }
   }
-  XUngrabPointer(dpy, e->time);
-  curtime = e->time;
 }
 
 int menuhit(Menu* m, XButtonEvent* e)
@@ -54,9 +62,14 @@ int menuhit(Menu* m, XButtonEvent* e)
   }
 
   int num_items;
-  int dx = 0;
   for (num_items = 0; m->item[num_items] != nullptr; num_items++) {
-    int w = XTextWidth(font, m->item[num_items], strlen(m->item[num_items])) + 4;
+  }
+
+  /// calculate position and bounds of menu window.
+
+  int dx = 0;
+  for (int i = 0; i < num_items; i++) {
+    int w = XTextWidth(font, m->item[i], strlen(m->item[i])) + 4;
     if (w > dx) {
       dx = w;
     }
@@ -64,10 +77,7 @@ int menuhit(Menu* m, XButtonEvent* e)
 
   int wide = dx;
 
-  int cur = m->lasthit;
-  if (cur >= num_items) {
-    cur = num_items - 1;
-  }
+  int cur = std::min(m->lasthit, num_items - 1);
 
   int high = font->ascent + font->descent + 1;
 
@@ -102,6 +112,8 @@ int menuhit(Menu* m, XButtonEvent* e)
     warp = true;
   }
 
+  // move menu window and cursor.
+
   if (warp) {
     setmouse(s, e->x, e->y);
   }
@@ -109,6 +121,8 @@ int menuhit(Menu* m, XButtonEvent* e)
   XMoveResizeWindow(dpy, s->menuwin, x, y, dx, dy);
   XSelectInput(dpy, s->menuwin, MenuMask);
   XMapRaised(dpy, s->menuwin);
+
+  // start grabbing
 
   int status = grab(dpy, s->menuwin, None, MenuGrabMask, None, e->time);
   if (status != GrabSuccess) {
@@ -122,114 +136,138 @@ int menuhit(Menu* m, XButtonEvent* e)
     XEvent ev;
     XMaskEvent(dpy, MenuMask, &ev);
     switch (ev.type) {
-    default:
-      fprintf(stderr, "9wm: menuhit: unknown ev.type %d\n", ev.type);
-      break;
     case ButtonPress:
       break;
     case ButtonRelease:
       if (ev.xbutton.button != e->button)
         break;
       {
-        x = ev.xbutton.x;
-        y = ev.xbutton.y;
+        int x = ev.xbutton.x;
+        int y = ev.xbutton.y;
+
         int i = y / high;
-        if (cur >= 0 && y >= cur * high - 3 && y < (cur + 1) * high + 3)
+        if (cur >= 0 && y >= cur * high - 3 && y < (cur + 1) * high + 3) {
           i = cur;
-        if (x < 0 || x > wide || y < -3)
+        }
+        if (x < 0 || x > wide || y < -3) {
           i = -1;
-        else if (i < 0 || i >= num_items)
+        }
+        else if (i < 0 || i >= num_items) {
           i = -1;
-        else
+        }
+        else {
           m->lasthit = i;
-        if (!nobuttons(&ev.xbutton))
+        }
+
+        if (!nobuttons(&ev.xbutton)) {
           i = -1;
+        }
+
         ungrab(&ev.xbutton);
         XUnmapWindow(dpy, s->menuwin);
         return i;
       }
     case MotionNotify: {
-      if (!drawn)
+      if (!drawn) {
         break;
-      x = ev.xbutton.x;
-      y = ev.xbutton.y;
+      }
+
+      int x = ev.xbutton.x;
+      int y = ev.xbutton.y;
+
       int old = cur;
+
       cur = y / high;
-      if (old >= 0 && y >= old * high - 3 && y < (old + 1) * high + 3)
+      if (old >= 0 && y >= old * high - 3 && y < (old + 1) * high + 3) {
         cur = old;
-      if (x < 0 || x > wide || y < -3)
+      }
+      if (x < 0 || x > wide || y < -3) {
         cur = -1;
-      else if (cur < 0 || cur >= num_items)
+      }
+      else if (cur < 0 || cur >= num_items) {
         cur = -1;
-      if (cur == old)
+      }
+
+      if (cur == old) {
         break;
-      if (old >= 0 && old < num_items)
+      }
+
+      if (old >= 0 && old < num_items) {
         XFillRectangle(dpy, s->menuwin, s->gc, 0, old * high, wide, high);
-      if (cur >= 0 && cur < num_items)
+      }
+
+      if (cur >= 0 && cur < num_items) {
         XFillRectangle(dpy, s->menuwin, s->gc, 0, cur * high, wide, high);
+      }
     } break;
     case Expose: {
       XClearWindow(dpy, s->menuwin);
       for (int i = 0; i < num_items; i++) {
-        char const* item = m->item[i];
+        std::string item = m->item[i];
 
-        int tx, ty;
+        int tx;
         if (i < 5) {
-          tx = (wide - XTextWidth(font, item, strlen(item))) / 2;
+          tx = (wide - XTextWidth(font, item.c_str(), item.length())) / 2;
         }
         else {
           tx = 1;
         }
-        ty = i * high + font->ascent + 1;
-        XDrawString(dpy, s->menuwin, s->gc, tx, ty, item, strlen(item));
+        int ty = i * high + font->ascent + 1;
+
+        XDrawString(dpy, s->menuwin, s->gc, tx, ty, item.c_str(), item.length());
       }
-      if (cur >= 0 && cur < num_items)
+      if (cur >= 0 && cur < num_items) {
         XFillRectangle(dpy, s->menuwin, s->gc, 0, cur * high, wide, high);
+      }
       drawn = true;
     } break;
+    default:
+      fprintf(stderr, "9wm: menuhit: unknown ev.type %d\n", ev.type);
+      break;
     }
   }
 }
 
 Client* selectwin(ScreenInfo* s, int release, int* shift)
 {
-  XEvent ev;
-  XButtonEvent* e;
-  int status;
-  Window w;
-  Client* c;
-
-  status = grab(dpy, s->root, s->root, ButtonMask, s->target, 0);
+  int status = grab(dpy, s->root, s->root, ButtonMask, s->target, 0);
   if (status != GrabSuccess) {
     graberror("selectwin", status); /* */
-    return 0;
+    return nullptr;
   }
-  w = None;
+
+  Window w = None;
   for (;;) {
+    XEvent ev;
     XMaskEvent(dpy, ButtonMask, &ev);
-    e = &ev.xbutton;
+    XButtonEvent* e = &ev.xbutton;
+
     switch (ev.type) {
     case ButtonPress:
       if (e->button != Button3) {
         ungrab(e);
-        return 0;
+        return nullptr;
       }
       w = e->subwindow;
       if (!release) {
-        c = getclient(w, 0);
-        if (c == 0)
+        Client* c = getclient(w, 0);
+        if (c == nullptr) {
           ungrab(e);
-        if (shift != 0)
+        }
+        if (shift != nullptr) {
           *shift = (e->state & ShiftMask) != 0;
+        }
         return c;
       }
       break;
     case ButtonRelease:
       ungrab(e);
-      if (e->button != Button3 || e->subwindow != w)
-        return 0;
-      if (shift != 0)
+      if (e->button != Button3 || e->subwindow != w) {
+        return nullptr;
+      }
+      if (shift != nullptr) {
         *shift = (e->state & ShiftMask) != 0;
+      }
       return getclient(w, 0);
     }
   }
@@ -237,11 +275,10 @@ Client* selectwin(ScreenInfo* s, int release, int* shift)
 
 void sweepcalc(Client* c, int x, int y)
 {
-  int dx, dy, sx, sy;
-
-  dx = x - c->x;
-  dy = y - c->y;
-  sx = sy = 1;
+  int dx = x - c->x;
+  int dy = y - c->y;
+  int sx = 1;
+  int sy = 1;
   if (dx < 0) {
     dx = -dx;
     sx = -1;
@@ -284,14 +321,12 @@ void dragcalc(Client* c, int x, int y)
 
 void drawbound(Client* c)
 {
-  int x, y, dx, dy;
-  ScreenInfo* s;
+  ScreenInfo* s = c->screen;
 
-  s = c->screen;
-  x = c->x;
-  y = c->y;
-  dx = c->dx;
-  dy = c->dy;
+  int x = c->x;
+  int y = c->y;
+  int dx = c->dx;
+  int dy = c->dy;
   if (dx < 0) {
     x += dx;
     dx = -dx;
@@ -302,47 +337,50 @@ void drawbound(Client* c)
   }
   if (dx <= 2 || dy <= 2)
     return;
+
   XDrawRectangle(dpy, s->root, s->gc, x, y, dx - 1, dy - 1);
   XDrawRectangle(dpy, s->root, s->gc, x + 1, y + 1, dx - 3, dy - 3);
 }
 
 void misleep(int msec)
 {
-  struct timeval t;
-
+  timeval t;
   t.tv_sec = msec / 1000;
   t.tv_usec = (msec % 1000) * 1000;
+
   select(0, 0, 0, 0, &t);
 }
 
-int sweepdrag(Client* c, XButtonEvent* e0, void (*recalc)(Client*, int, int))
+template <typename Recalc>
+int sweepdrag(Client* c, XButtonEvent* e0, Recalc recalc)
 {
-  XEvent ev;
-  int idle;
-  int cx, cy, rx, ry;
-  int ox, oy, odx, ody;
-  XButtonEvent* e;
+  int ox = c->x;
+  int oy = c->y;
+  int odx = c->dx;
+  int ody = c->dy;
 
-  ox = c->x;
-  oy = c->y;
-  odx = c->dx;
-  ody = c->dy;
   c->x -= _border;
   c->y -= _border;
   c->dx += 2 * _border;
   c->dy += 2 * _border;
+
+  int cx, cy;
   if (e0) {
     c->x = cx = e0->x;
     c->y = cy = e0->y;
     recalc(c, e0->x, e0->y);
   }
-  else
+  else {
     getmouse(c->screen, &cx, &cy);
+  }
   XGrabServer(dpy);
   drawbound(c);
-  idle = 0;
+
+  int idle = 0;
   for (;;) {
+    XEvent ev;
     if (XCheckMaskEvent(dpy, ButtonMask, &ev) == 0) {
+      int rx, ry;
       getmouse(c->screen, &rx, &ry);
       if (rx != cx || ry != cy || ++idle > 300) {
         drawbound(c);
@@ -362,7 +400,8 @@ int sweepdrag(Client* c, XButtonEvent* e0, void (*recalc)(Client*, int, int))
       misleep(50);
       continue;
     }
-    e = &ev.xbutton;
+
+    XButtonEvent* e = &ev.xbutton;
     switch (ev.type) {
     case ButtonPress:
     case ButtonRelease:
@@ -382,12 +421,13 @@ int sweepdrag(Client* c, XButtonEvent* e0, void (*recalc)(Client*, int, int))
       c->y += _border;
       c->dx -= 2 * _border;
       c->dy -= 2 * _border;
-      if (c->dx < 4 || c->dy < 4 || c->dx < c->min_dx || c->dy < c->min_dy)
-        goto bad;
+      if (c->dx < 4 || c->dy < 4 || c->dx < c->min_dx || c->dy < c->min_dy) {
+        break;
+      }
       return 1;
     }
   }
-bad:
+
   c->x = ox;
   c->y = oy;
   c->dx = odx;
