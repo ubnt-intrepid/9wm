@@ -103,14 +103,20 @@ void circulatereq(XCirculateRequestEvent* e) { fprintf(stderr, "It must be the w
 
 void newwindow(XCreateWindowEvent* e)
 {
-  // we don't set curtime as nothing here uses it
   if (e->override_redirect) {
     return;
   }
 
   Client* c = getclient(e->window, 1);
-  ScreenInfo* s;
-  if (c && c->window == e->window && (s = getscreen(e->parent))) {
+  if (c == nullptr) {
+    return;
+  }
+  if (c->window != e->window) {
+    return;
+  }
+
+  ScreenInfo* s = getscreen(e->parent);
+  if (s != nullptr) {
     c->x = e->x;
     c->y = e->y;
     c->dx = e->width;
@@ -127,7 +133,7 @@ void destroy(Window w)
   curtime = CurrentTime;
 
   Client* c = getclient(w, 0);
-  if (c == 0) {
+  if (c == nullptr) {
     return;
   }
 
@@ -160,8 +166,9 @@ void clientmesg(XClientMessageEvent* e)
       if (normal(c))
         hide(c);
     }
-    else
+    else {
       fprintf(stderr, "9wm: WM_CHANGE_STATE: format %d data %ld w 0x%x\n", e->format, e->data.l[0], (int)e->window);
+    }
   }
   else if ((e->message_type == wm_moveresize) && (e->data.l[2] == 8)) {
     Client* c = getclient(e->window, 0);
@@ -176,9 +183,7 @@ void clientmesg(XClientMessageEvent* e)
     return;
   }
   else {
-    char* name;
-
-    name = XGetAtomName(dpy, e->message_type);
+    char* name = XGetAtomName(dpy, e->message_type);
     fprintf(stderr, "9wm: unhandled ClientMessage %s (%d),  window 0x%x\n", name, (int)e->message_type, (int)e->window);
     XFree(name);
   }
@@ -209,17 +214,17 @@ void cmap(XColormapEvent* e)
     if (c == current) {
       cmapfocus(c);
     }
+    return;
   }
-  else {
-    for (c = clients; c; c = c->next) {
-      for (int i = 0; i < c->ncmapwins; i++) {
-        if (c->cmapwins[i] == e->window) {
-          c->wmcmaps[i] = e->colormap;
-          if (c == current) {
-            cmapfocus(c);
-          }
-          return;
+
+  for (c = clients; c; c = c->next) {
+    for (int i = 0; i < c->ncmapwins; i++) {
+      if (c->cmapwins[i] == e->window) {
+        c->wmcmaps[i] = e->colormap;
+        if (c == current) {
+          cmapfocus(c);
         }
+        return;
       }
     }
   }
@@ -229,14 +234,14 @@ void property(XPropertyEvent* e)
 {
   // we don't set curtime as nothing here uses it
 
-  Atom a = e->atom;
-  int delete_ = (e->state == PropertyDelete);
-
   Client* c = getclient(e->window, 0);
-  if (c == 0) {
+  if (c == nullptr) {
     return;
   }
 
+  int delete_ = (e->state == PropertyDelete);
+
+  Atom a = e->atom;
   switch (a) {
   case XA_WM_ICON_NAME:
     if (c->iconname != 0)
@@ -294,12 +299,16 @@ void reparent(XReparentEvent* e)
         c->parent = c->screen->root;
       }
     }
+    return;
   }
-  else {
-    Client* c = getclient(e->window, 0);
-    if (c != 0 && (c->parent == c->screen->root || withdrawn(c))) {
-      rmclient(c);
-    }
+
+  Client* c = getclient(e->window, 0);
+  if (c == nullptr) {
+    return;
+  }
+
+  if (c->parent == c->screen->root || withdrawn(c)) {
+    rmclient(c);
   }
 }
 
@@ -311,7 +320,11 @@ void enter(XCrossingEvent* e)
   }
 
   Client* c = getclient(e->window, 0);
-  if (c != 0 && c != current) {
+  if (c == nullptr) {
+    return;
+  }
+
+  if (c != current) {
     // someone grabbed the pointer; make them current
     XMapRaised(dpy, c->parent);
     top(c);
@@ -325,8 +338,13 @@ void focusin(XFocusChangeEvent* e)
   if (e->detail != NotifyNonlinearVirtual) {
     return;
   }
+
   Client* c = getclient(e->window, 0);
-  if (c != 0 && c->window == e->window && c != current) {
+  if (c == nullptr) {
+    return;
+  }
+
+  if (c->window == e->window && c != current) {
     // someone grabbed keyboard or seized focus; make them current
     XMapRaised(dpy, c->parent);
     top(c);
