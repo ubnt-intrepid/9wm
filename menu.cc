@@ -28,79 +28,6 @@ Menu egg = {
     version,
 };
 
-void button(XButtonEvent* e)
-{
-  curtime = e->time;
-
-  ScreenInfo* s = getscreen(e->root);
-  if (s == 0)
-    return;
-
-  Client* c = getclient(e->window, 0);
-  if (c) {
-    e->x += c->x - _border + 1;
-    e->y += c->y - _border + 1;
-  }
-  else if (e->window != e->root) {
-    Window dw;
-    XTranslateCoordinates(dpy, e->window, s->root, e->x, e->y, &e->x, &e->y, &dw);
-  }
-
-  switch (e->button) {
-  case Button1:
-    if (c) {
-      XMapRaised(dpy, c->parent);
-      top(c);
-      active(c);
-    }
-    return;
-  case Button2:
-    if ((e->state & (ShiftMask | ControlMask)) == (ShiftMask | ControlMask)) {
-      menuhit(&egg, e);
-    }
-    else {
-      spawn(s, "9wm-mm");
-    }
-    return;
-  case Button3:
-    break;
-  default:
-    return;
-  }
-
-  if (current && current->screen == s)
-    cmapnofocus(s);
-
-  int n = menuhit(&b3menu, e);
-  switch (n) {
-  case 0: /* New */
-    spawn(s, termprog);
-    break;
-  case 1: /* Reshape */
-    reshape(selectwin(s, 1, nullptr));
-    break;
-  case 2: /* Move */
-    move(selectwin(s, 0, nullptr));
-    break;
-  case 3: /* Delete */
-  {
-    int shift = 0;
-    c = selectwin(s, 1, &shift);
-    delete_(c, shift);
-  } break;
-  case 4: /* Hide */
-    hide(selectwin(s, 1, nullptr));
-    break;
-  default: /* unhide window */
-    unhide(n - B3FIXED, 1);
-    break;
-  case -1: /* nothing */
-    break;
-  }
-  if (current && current->screen == s)
-    cmapfocus(current);
-}
-
 void spawn(ScreenInfo* s, char const* prog)
 {
   if (fork() == 0) {
@@ -242,4 +169,77 @@ void renamec(Client* c, char* name)
       return;
     }
   }
+}
+
+void button(XButtonEvent* e)
+{
+  curtime = e->time;
+
+  ScreenInfo* s = getscreen(e->root);
+  if (s == 0)
+    return;
+
+  Client* c = getclient(e->window, 0);
+  if (c) {
+    e->x += c->x - _border + 1;
+    e->y += c->y - _border + 1;
+  }
+  else if (e->window != e->root) {
+    Window dw;
+    XTranslateCoordinates(dpy, e->window, s->root, e->x, e->y, &e->x, &e->y, &dw);
+  }
+
+  switch (e->button) {
+  case Button1:
+    if (c) {
+      XMapRaised(dpy, c->parent);
+      top(c);
+      active(c);
+    }
+    return;
+  case Button2:
+    if ((e->state & (ShiftMask | ControlMask)) == (ShiftMask | ControlMask)) {
+      menuhit(&egg, e);
+    }
+    else {
+      spawn(s, "9wm-mm");
+    }
+    return;
+  case Button3:
+    break;
+  default:
+    return;
+  }
+
+  if (current && current->screen == s)
+    cmapnofocus(s);
+
+  int n = menuhit(&b3menu, e);
+  switch (n) {
+  case 0: /* New */
+    spawn(s, termprog);
+    break;
+  case 1: /* Reshape */
+    reshape(selectwin(s, 1, nullptr));
+    break;
+  case 2: /* Move */
+    move(selectwin(s, 0, nullptr));
+    break;
+  case 3: /* Delete */
+  {
+    int shift = 0;
+    c = selectwin(s, 1, &shift);
+    delete_(c, shift);
+  } break;
+  case 4: /* Hide */
+    hide(selectwin(s, 1, nullptr));
+    break;
+  default: /* unhide window */
+    unhide(n - B3FIXED, 1);
+    break;
+  case -1: /* nothing */
+    break;
+  }
+  if (current && current->screen == s)
+    cmapfocus(current);
 }

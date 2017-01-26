@@ -11,145 +11,48 @@
 #include <X11/extensions/shape.h>
 #include "9wm.h"
 
-int manage(Client* c, int mapped)
+int _getprop(Window w, Atom a, Atom type, long len, unsigned char** p)
 {
-  int fixsize, dohide, doreshape, state;
-  long msize;
-  XClassHint class_;
-  XWMHints* hints;
+  Atom real_type;
+  int format;
+  unsigned long n, extra;
 
-  trace(c, "manage", 0);
-  XSelectInput(dpy, c->window, ColormapChangeMask | EnterWindowMask | PropertyChangeMask | FocusChangeMask);
-
+  int status = XGetWindowProperty(dpy, w, a, 0L, len, False, type, &real_type, &format, &n, &extra, p);
+  if (status != Success || *p == 0)
+    return -1;
+  if (n == 0)
+    XFree((void*)*p);
   /*
-   * Get loads of hints
+   * could check real_type, format, extra here...
    */
-
-  if (XGetClassHint(dpy, c->window, &class_) != 0) { /* ``Success'' */
-    c->instance = class_.res_name;
-    c->class_ = class_.res_class;
-    c->is9term = (strcmp(c->class_, "9term") == 0);
-  }
-  else {
-    c->instance = 0;
-    c->class_ = 0;
-    c->is9term = 0;
-  }
-  c->iconname = getprop(c->window, XA_WM_ICON_NAME);
-  c->name = getprop(c->window, XA_WM_NAME);
-  setlabel(c);
-
-  hints = XGetWMHints(dpy, c->window);
-  if (XGetWMNormalHints(dpy, c->window, &c->size, &msize) == 0 || c->size.flags == 0)
-    c->size.flags = PSize; /* not specified - punt */
-
-  getcmaps(c);
-  getproto(c);
-  gettrans(c);
-  if (c->is9term)
-    c->hold = getiprop(c->window, _9wm_hold_mode);
-
-  /*
-   * Figure out what to do with the window from hints
-   */
-
-  if (!getwstate(c->window, &state))
-    state = hints ? hints->initial_state : NormalState;
-  dohide = (state == IconicState);
-
-  fixsize = 0;
-  if ((c->size.flags & (USSize | PSize)))
-    fixsize = 1;
-  if ((c->size.flags & (PMinSize | PMaxSize)) == (PMinSize | PMaxSize) && c->size.min_width == c->size.max_width &&
-      c->size.min_height == c->size.max_height)
-    fixsize = 1;
-  doreshape = !mapped;
-  if (fixsize) {
-    if (c->size.flags & USPosition)
-      doreshape = 0;
-    if (dohide && (c->size.flags & PPosition))
-      doreshape = 0;
-    if (c->trans != None)
-      doreshape = 0;
-  }
-  if (c->is9term)
-    fixsize = 0;
-  if (c->size.flags & PBaseSize) {
-    c->min_dx = c->size.base_width;
-    c->min_dy = c->size.base_height;
-  }
-  else if (c->size.flags & PMinSize) {
-    c->min_dx = c->size.min_width;
-    c->min_dy = c->size.min_height;
-  }
-  else if (c->is9term) {
-    c->min_dx = 100;
-    c->min_dy = 50;
-  }
-  else
-    c->min_dx = c->min_dy = 0;
-
-  if (hints)
-    XFree(hints);
-
-  /*
-   * Now do it!!!
-   */
-
-  if (doreshape) {
-    int xmax = DisplayWidth(dpy, c->screen->num);
-    int ymax = DisplayHeight(dpy, c->screen->num);
-    int x, y;
-
-    getmouse(c->screen, &x, &y);
-
-    c->x = x - (c->dx / 2);
-    c->y = y - (c->dy / 2);
-
-    if (c->x + c->dx > xmax) {
-      c->x = xmax - c->dx;
-    }
-    if (c->x < 0) {
-      c->x = 0;
-    }
-
-    if (c->y + c->dy > ymax) {
-      c->y = ymax - c->dy;
-    }
-    if (c->y < 0) {
-      c->y = 0;
-    }
-  }
-  gravitate(c, 0);
-
-  c->parent = XCreateSimpleWindow(dpy, c->screen->root, c->x - _border, c->y - _border, c->dx + 2 * (_border - 1),
-                                  c->dy + 2 * (_border - 1), 1, c->screen->black, c->screen->white);
-  XSelectInput(dpy, c->parent, SubstructureRedirectMask | SubstructureNotifyMask);
-  if (mapped)
-    c->reparenting = 1;
-  if (doreshape && !fixsize)
-    XResizeWindow(dpy, c->window, c->dx, c->dy);
-  XSetWindowBorderWidth(dpy, c->window, 0);
-  XReparentWindow(dpy, c->window, c->parent, _border - 1, _border - 1);
-  XAddToSaveSet(dpy, c->window);
-  if (dohide)
-    hide(c);
-  else {
-    XMapWindow(dpy, c->window);
-    XMapWindow(dpy, c->parent);
-    if (nostalgia || doreshape)
-      active(c);
-    else if (c->trans != None && current && current->window == c->trans)
-      active(c);
-    else
-      setactive(c, 0);
-    setwstate(c, NormalState);
-  }
-  if (current && (current != c))
-    cmapfocus(current);
-  c->init = 1;
-  return 1;
+  return n;
 }
+
+char* getprop(Window w, Atom a)
+{
+  unsigned char* p;
+
+  if (_getprop(w, a, utf8_string, 100L, &p) <= 0) {
+    return 0;
+  }
+  return (char*)p;
+}
+
+int get1prop(Window w, Atom a, Atom type)
+{
+  unsigned char* p;
+  if (_getprop(w, a, type, 1L, &p) <= 0) {
+    return 0;
+  }
+
+  int ret = (int)(unsigned long int)(*p);
+  XFree((void*)p);
+  return ret;
+}
+
+Window getwprop(Window w, Atom a) { return get1prop(w, a, XA_WINDOW); }
+
+int getiprop(Window w, Atom a) { return get1prop(w, a, XA_INTEGER); }
 
 void scanwins(ScreenInfo* s)
 {
@@ -366,49 +269,6 @@ void setlabel(Client* c)
   c->label = const_cast<char*>(label);
 }
 
-int _getprop(Window w, Atom a, Atom type, long len, unsigned char** p)
-{
-  Atom real_type;
-  int format;
-  unsigned long n, extra;
-
-  int status = XGetWindowProperty(dpy, w, a, 0L, len, False, type, &real_type, &format, &n, &extra, p);
-  if (status != Success || *p == 0)
-    return -1;
-  if (n == 0)
-    XFree((void*)*p);
-  /*
-   * could check real_type, format, extra here...
-   */
-  return n;
-}
-
-char* getprop(Window w, Atom a)
-{
-  unsigned char* p;
-
-  if (_getprop(w, a, utf8_string, 100L, &p) <= 0) {
-    return 0;
-  }
-  return (char*)p;
-}
-
-int get1prop(Window w, Atom a, Atom type)
-{
-  unsigned char* p;
-  if (_getprop(w, a, type, 1L, &p) <= 0) {
-    return 0;
-  }
-
-  int ret = (int)(unsigned long int)(*p);
-  XFree((void*)p);
-  return ret;
-}
-
-Window getwprop(Window w, Atom a) { return get1prop(w, a, XA_WINDOW); }
-
-int getiprop(Window w, Atom a) { return get1prop(w, a, XA_INTEGER); }
-
 void setwstate(Client* c, int state)
 {
   long data[2];
@@ -451,4 +311,144 @@ void getproto(Client* c)
   }
 
   XFree((char*)p);
+}
+
+int manage(Client* c, int mapped)
+{
+  int fixsize, dohide, doreshape, state;
+  long msize;
+  XClassHint class_;
+  XWMHints* hints;
+
+  trace(c, "manage", 0);
+  XSelectInput(dpy, c->window, ColormapChangeMask | EnterWindowMask | PropertyChangeMask | FocusChangeMask);
+
+  /*
+   * Get loads of hints
+   */
+
+  if (XGetClassHint(dpy, c->window, &class_) != 0) { /* ``Success'' */
+    c->instance = class_.res_name;
+    c->class_ = class_.res_class;
+    c->is9term = (strcmp(c->class_, "9term") == 0);
+  }
+  else {
+    c->instance = 0;
+    c->class_ = 0;
+    c->is9term = 0;
+  }
+  c->iconname = getprop(c->window, XA_WM_ICON_NAME);
+  c->name = getprop(c->window, XA_WM_NAME);
+  setlabel(c);
+
+  hints = XGetWMHints(dpy, c->window);
+  if (XGetWMNormalHints(dpy, c->window, &c->size, &msize) == 0 || c->size.flags == 0)
+    c->size.flags = PSize; /* not specified - punt */
+
+  getcmaps(c);
+  getproto(c);
+  gettrans(c);
+  if (c->is9term)
+    c->hold = getiprop(c->window, _9wm_hold_mode);
+
+  /*
+   * Figure out what to do with the window from hints
+   */
+
+  if (!getwstate(c->window, &state))
+    state = hints ? hints->initial_state : NormalState;
+  dohide = (state == IconicState);
+
+  fixsize = 0;
+  if ((c->size.flags & (USSize | PSize)))
+    fixsize = 1;
+  if ((c->size.flags & (PMinSize | PMaxSize)) == (PMinSize | PMaxSize) && c->size.min_width == c->size.max_width &&
+      c->size.min_height == c->size.max_height)
+    fixsize = 1;
+  doreshape = !mapped;
+  if (fixsize) {
+    if (c->size.flags & USPosition)
+      doreshape = 0;
+    if (dohide && (c->size.flags & PPosition))
+      doreshape = 0;
+    if (c->trans != None)
+      doreshape = 0;
+  }
+  if (c->is9term)
+    fixsize = 0;
+  if (c->size.flags & PBaseSize) {
+    c->min_dx = c->size.base_width;
+    c->min_dy = c->size.base_height;
+  }
+  else if (c->size.flags & PMinSize) {
+    c->min_dx = c->size.min_width;
+    c->min_dy = c->size.min_height;
+  }
+  else if (c->is9term) {
+    c->min_dx = 100;
+    c->min_dy = 50;
+  }
+  else
+    c->min_dx = c->min_dy = 0;
+
+  if (hints)
+    XFree(hints);
+
+  /*
+   * Now do it!!!
+   */
+
+  if (doreshape) {
+    int xmax = DisplayWidth(dpy, c->screen->num);
+    int ymax = DisplayHeight(dpy, c->screen->num);
+    int x, y;
+
+    getmouse(c->screen, &x, &y);
+
+    c->x = x - (c->dx / 2);
+    c->y = y - (c->dy / 2);
+
+    if (c->x + c->dx > xmax) {
+      c->x = xmax - c->dx;
+    }
+    if (c->x < 0) {
+      c->x = 0;
+    }
+
+    if (c->y + c->dy > ymax) {
+      c->y = ymax - c->dy;
+    }
+    if (c->y < 0) {
+      c->y = 0;
+    }
+  }
+  gravitate(c, 0);
+
+  c->parent = XCreateSimpleWindow(dpy, c->screen->root, c->x - _border, c->y - _border, c->dx + 2 * (_border - 1),
+                                  c->dy + 2 * (_border - 1), 1, c->screen->black, c->screen->white);
+  XSelectInput(dpy, c->parent, SubstructureRedirectMask | SubstructureNotifyMask);
+  if (mapped)
+    c->reparenting = 1;
+  if (doreshape && !fixsize)
+    XResizeWindow(dpy, c->window, c->dx, c->dy);
+  XSetWindowBorderWidth(dpy, c->window, 0);
+  XReparentWindow(dpy, c->window, c->parent, _border - 1, _border - 1);
+  XAddToSaveSet(dpy, c->window);
+  if (dohide)
+    hide(c);
+  else {
+    XMapWindow(dpy, c->window);
+    XMapWindow(dpy, c->parent);
+    if (nostalgia || doreshape)
+      active(c);
+    else if (c->trans != None && current && current->window == c->trans)
+      active(c);
+    else
+      setactive(c, 0);
+    setwstate(c, NormalState);
+  }
+  if (current && (current != c))
+    cmapfocus(current);
+  c->init = 1;
+  return 1;
 }

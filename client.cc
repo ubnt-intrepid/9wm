@@ -176,6 +176,45 @@ void rmclient(Client* c)
   free(c);
 }
 
+void sendconfig(Client* c)
+{
+  XConfigureEvent ce;
+  ce.type = ConfigureNotify;
+  ce.event = c->window;
+  ce.window = c->window;
+  ce.x = c->x;
+  ce.y = c->y;
+  ce.width = c->dx;
+  ce.height = c->dy;
+  ce.border_width = c->border;
+  ce.above = None;
+  ce.override_redirect = 0;
+
+  XSendEvent(dpy, c->window, False, StructureNotifyMask, (XEvent*)&ce);
+}
+
+void sendcmessage(Window w, Atom a, long x, int isroot)
+{
+  XEvent ev;
+  memset(&ev, 0, sizeof(ev));
+  ev.xclient.type = ClientMessage;
+  ev.xclient.window = w;
+  ev.xclient.message_type = a;
+  ev.xclient.format = 32;
+  ev.xclient.data.l[0] = x;
+  ev.xclient.data.l[1] = timestamp(dpy);
+
+  long mask = 0L;
+  if (isroot) {
+    mask = SubstructureRedirectMask; /* magic! */
+  }
+
+  int status = XSendEvent(dpy, w, False, mask, &ev);
+  if (status == 0) {
+    fprintf(stderr, "9wm: sendcmessage failed\n");
+  }
+}
+
 void dump_revert()
 {
 #ifdef DEBUG

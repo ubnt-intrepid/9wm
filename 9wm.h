@@ -129,13 +129,8 @@ extern Menu b3menu;
 extern int ignore_badwindow;
 
 /* 9wm.c */
-void usage();
 ScreenInfo* getscreen(Window w);
 Time timestamp(Display* dpy);
-void sendcmessage(Window w, Atom a, long x, int isroot);
-void sendconfig(Client* c);
-XEvent getevent(Display* dpy);
-void cleanup();
 
 /* event.c */
 int mainloop();
@@ -143,17 +138,13 @@ int mainloop();
 /* manage.c */
 int manage(Client* c, int mapped);
 void scanwins(ScreenInfo* s);
-void setshape(Client* c);
 void withdraw(Client* c);
 void gravitate(Client* c, int invert);
 void cmapfocus(Client* c);
 void cmapnofocus(ScreenInfo* s);
 void getcmaps(Client* c);
-int _getprop(Window w, Atom a, Atom type, long len, unsigned char** p);
 char* getprop(Window w, Atom a);
-Window getwprop();
 int getiprop(Window w, Atom a);
-int getwstate(Window w, int* state);
 void setwstate(Client* c, int state);
 void setlabel(Client* c);
 void getproto(Client* c);
@@ -161,10 +152,7 @@ void gettrans(Client* c);
 
 /* menu.c */
 void button(XButtonEvent* e);
-void spawn(ScreenInfo* s, char const* prog);
-void reshape(Client* c);
 void move(Client* c);
-void delete_(Client* c, int shift);
 void hide(Client* c);
 void unhide(int n, int map);
 void unhidec(Client* c, int map);
@@ -178,6 +166,8 @@ void nofocus();
 void top(Client* c);
 Client* getclient(Window w, int create);
 void rmclient(Client* c);
+void sendconfig(Client* c);
+void sendcmessage(Window w, Atom a, long x, int isroot);
 void dump_revert();
 void dump_clients();
 
@@ -190,10 +180,8 @@ void getmouse(ScreenInfo* s, int* x, int* y);
 void setmouse(ScreenInfo* s, int x, int y);
 
 /* error.c */
-int handler(Display* d, XErrorEvent* e);
 void fatal(char const* s);
 void graberror(char const* f, int err);
-void showhints();
 void trace(Client* c, char const* s, XEvent* e);
 
 /* cursor.c */

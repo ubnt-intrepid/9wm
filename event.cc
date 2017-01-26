@@ -1,6 +1,8 @@
 /*
  * Copyright (c) 2014 multiple authors, see README for licence details
  */
+#include <signal.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <X11/X.h>
@@ -10,10 +12,144 @@
 #include <X11/Xatom.h>
 #include <X11/extensions/shape.h>
 #include "9wm.h"
+#include <vector>
 
-void mapreq(XMapRequestEvent* e);
+extern std::vector<ScreenInfo> screens;
+extern int signalled;
 
-void configurereq(XConfigureRequestEvent* e)
+static void cleanup()
+{
+  // order of un-reparenting determines final stacking order...
+  Client* cc[2] = {nullptr, nullptr};
+  for (Client *c = clients, *next; c; c = next) {
+    next = c->next;
+    int i = normal(c);
+    c->next = cc[i];
+    cc[i] = c;
+  }
+
+  XWindowChanges wc;
+  for (int i = 0; i < 2; i++) {
+    for (Client* c = cc[i]; c; c = c->next) {
+      if (!withdrawn(c)) {
+        gravitate(c, 1);
+        XReparentWindow(dpy, c->window, c->screen->root, c->x, c->y);
+      }
+      wc.border_width = c->border;
+      XConfigureWindow(dpy, c->window, CWBorderWidth, &wc);
+    }
+  }
+
+  XSetInputFocus(dpy, PointerRoot, RevertToPointerRoot, timestamp(dpy));
+  for (auto& screen : screens) {
+    cmapnofocus(&screen);
+  }
+  XCloseDisplay(dpy);
+}
+
+static bool select_event(Display* dpy, timeval* t)
+{
+  int const fd = ConnectionNumber(dpy);
+  fd_set rfds;
+  FD_ZERO(&rfds);
+  FD_SET(fd, &rfds);
+  return select(fd + 1, &rfds, nullptr, nullptr, t) == 1;
+}
+
+static XEvent getevent(Display* dpy)
+{
+  if (signalled) {
+    fprintf(stderr, "9wm: exiting on signal\n");
+    cleanup();
+    exit(1);
+  }
+
+  if (QLength(dpy) > 0) {
+    XEvent e;
+    XNextEvent(dpy, &e);
+    return e;
+  }
+
+  timeval t;
+  t.tv_sec = 0;
+  t.tv_usec = 0;
+  if (select_event(dpy, &t)) {
+    XEvent e;
+    XNextEvent(dpy, &e);
+    return e;
+  }
+
+  XFlush(dpy);
+
+  for (;;) {
+    if (select_event(dpy, nullptr)) {
+      XEvent e;
+      XNextEvent(dpy, &e);
+      return e;
+    }
+
+    if (errno != EINTR) {
+      if (signalled) {
+        fprintf(stderr, "9wm: exiting on signal\n");
+        cleanup();
+      }
+      else {
+        perror("9wm: select failed");
+      }
+      exit(1);
+    }
+  }
+  // unreachable!()
+}
+
+
+static void mapreq(XMapRequestEvent* e)
+{
+  curtime = CurrentTime;
+
+  Client* c = getclient(e->window, 0);
+  trace(c, "mapreq", reinterpret_cast<XEvent*>(e));
+
+  if (c == 0 || c->window != e->window) {
+    // workaround for stupid NCDware
+    fprintf(stderr, "9wm: bad mapreq c %p w %x, rescanning\n", (void*)c, (int)e->window);
+    for (auto& screen : screens) {
+      scanwins(&screen);
+    }
+    c = getclient(e->window, 0);
+    if (c == 0 || c->window != e->window) {
+      fprintf(stderr, "9wm: window not found after rescan\n");
+      return;
+    }
+  }
+
+  switch (c->state) {
+  case WithdrawnState:
+    if (c->parent == c->screen->root) {
+      if (!manage(c, 0))
+        return;
+      break;
+    }
+    XReparentWindow(dpy, c->window, c->parent, _border - 1, _border - 1);
+    XAddToSaveSet(dpy, c->window);
+  /*
+   * fall through...
+   */
+  case NormalState:
+    XMapWindow(dpy, c->window);
+    XMapRaised(dpy, c->parent);
+    top(c);
+    setwstate(c, NormalState);
+    if (c->trans != None && current && c->trans == current->window)
+      active(c);
+    break;
+  case IconicState:
+    unhidec(c, 1);
+    break;
+  }
+}
+
+static void configurereq(XConfigureRequestEvent* e)
 {
   // we don't set curtime as nothing here uses it
 
@@ -75,7 +211,7 @@ void configurereq(XConfigureRequestEvent* e)
   XConfigureWindow(dpy, e->window, e->value_mask, &wc);
 }
 
-void unmap(XUnmapEvent* e)
+static void unmap(XUnmapEvent* e)
 {
   curtime = CurrentTime;
 
@@ -99,9 +235,9 @@ void unmap(XUnmapEvent* e)
   }
 }
 
-void circulatereq(XCirculateRequestEvent* e) { fprintf(stderr, "It must be the warlock Krill!\n"); /* :-) */ }
+static void circulatereq(XCirculateRequestEvent* e) { fprintf(stderr, "It must be the warlock Krill!\n"); /* :-) */ }
 
-void newwindow(XCreateWindowEvent* e)
+static void newwindow(XCreateWindowEvent* e)
 {
   if (e->override_redirect) {
     return;
@@ -128,7 +264,7 @@ void newwindow(XCreateWindowEvent* e)
   }
 }
 
-void destroy(Window w)
+static void destroy(Window w)
 {
   curtime = CurrentTime;
 
@@ -145,7 +281,7 @@ void destroy(Window w)
   ignore_badwindow = 0;
 }
 
-void clientmesg(XClientMessageEvent* e)
+static void clientmesg(XClientMessageEvent* e)
 {
   curtime = CurrentTime;
 
@@ -200,7 +336,7 @@ struct _XColormapEvent {
   int state;
 };
 
-void cmap(XColormapEvent* e)
+static void cmap(XColormapEvent* e)
 {
   // we don't set curtime as nothing here uses it
 
@@ -230,7 +366,7 @@ void cmap(XColormapEvent* e)
   }
 }
 
-void property(XPropertyEvent* e)
+static void property(XPropertyEvent* e)
 {
   // we don't set curtime as nothing here uses it
 
@@ -276,7 +412,7 @@ void property(XPropertyEvent* e)
   }
 }
 
-void reparent(XReparentEvent* e)
+static void reparent(XReparentEvent* e)
 {
   // we don't set curtime as nothing here uses it
   if (!getscreen(e->event) || e->override_redirect) {
@@ -312,7 +448,7 @@ void reparent(XReparentEvent* e)
   }
 }
 
-void enter(XCrossingEvent* e)
+static void enter(XCrossingEvent* e)
 {
   curtime = e->time;
   if (e->mode != NotifyGrab || e->detail != NotifyNonlinearVirtual) {
@@ -332,7 +468,7 @@ void enter(XCrossingEvent* e)
   }
 }
 
-void focusin(XFocusChangeEvent* e)
+static void focusin(XFocusChangeEvent* e)
 {
   curtime = CurrentTime;
   if (e->detail != NotifyNonlinearVirtual) {
