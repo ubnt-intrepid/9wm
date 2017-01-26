@@ -102,7 +102,6 @@ static XEvent getevent(Display* dpy)
   // unreachable!()
 }
 
-
 static void mapreq(XMapRequestEvent* e)
 {
   curtime = CurrentTime;

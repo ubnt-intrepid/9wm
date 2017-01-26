@@ -20,6 +20,10 @@ char const* b3items[B3FIXED + MAXHIDDEN + 1] = {
     "New", "Reshape", "Move", "Delete", "Hide", 0,
 };
 
+char const* version[] = {
+    VERSION,
+};
+
 Menu b3menu = {
     b3items,
 };

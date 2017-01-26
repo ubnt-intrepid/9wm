@@ -16,10 +16,7 @@
 #include <X11/Xproto.h>
 #include "9wm.h"
 #include <vector>
-
-char const* version[] = {
-    "9wm version 1.3.7, Copyright (c) 2016 multiple authors", 0,
-};
+#include <string>
 
 Display* dpy;
 
@@ -51,18 +48,6 @@ Atom active_window;
 Atom utf8_string;
 Atom _9wm_running;
 Atom _9wm_hold_mode;
-
-char const* fontlist[] = {
-    "-*-dejavu sans-bold-r-*-*-14-*-*-*-p-*-*-*",
-    "-adobe-helvetica-bold-r-*-*-14-*-*-*-p-*-*-*",
-    "lucm.latin1.9",
-    "blit",
-    "9x15bold",
-    "lucidasanstypewriter-12",
-    "fixed",
-    "*",
-    0,
-};
 
 void sigchld(int signum)
 {
@@ -134,26 +119,36 @@ int error_handler(Display* d, XErrorEvent* e)
 
 void init_font(char const* fname)
 {
-  font = nullptr;
+  static std::vector<std::string> fontlist = {
+      "-*-dejavu sans-bold-r-*-*-14-*-*-*-p-*-*-*",
+      "-adobe-helvetica-bold-r-*-*-14-*-*-*-p-*-*-*",
+      "lucm.latin1.9",
+      "blit",
+      "9x15bold",
+      "lucidasanstypewriter-12",
+      "fixed",
+      "*",
+  };
+
   if (fname != nullptr) {
-    font = XLoadQueryFont(dpy, fname);
-    if (font == 0) {
+    auto _font = XLoadQueryFont(dpy, fname);
+    if (_font != nullptr) {
+      font = _font;
+      return;
+    }
+    else {
       fprintf(stderr, "9wm: warning: can't load font %s\n", fname);
     }
   }
-  if (font == 0) {
-    for (int i = 0;; i++) {
-      char const* fname = fontlist[i];
-      if (fname == 0) {
-        fprintf(stderr, "9wm: warning: can't find a font\n");
-        break;
-      }
-      font = XLoadQueryFont(dpy, fname);
-      if (font != 0) {
-        break;
-      }
+
+  for (auto& fname : fontlist) {
+    auto _font = XLoadQueryFont(dpy, fname.c_str());
+    if (_font != nullptr) {
+      font = _font;
+      return;
     }
   }
+  fprintf(stderr, "9wm: warning: can't find a font\n");
 }
 
 // Setup color for border
@@ -291,7 +286,7 @@ void parse_args(int argc, char** argv, bool& do_exit, bool& do_restart, char con
       termprog = argv[++i];
     }
     else if (strcmp(argv[i], "-version") == 0) {
-      fprintf(stderr, "%s\n", version[0]);
+      fprintf(stderr, "%s\n", VERSION);
       exit(0);
     }
     else if (strcmp(argv[i], "-border") == 0 && i + 1 < argc) {

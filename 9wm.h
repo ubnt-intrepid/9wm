@@ -6,6 +6,8 @@
 
 #include <cstdint>
 
+static constexpr char const* VERSION = "9wm version 1.3.7, Copyright (c) 2016 multiple authors";
+
 static constexpr std::size_t MAXHIDDEN = 32;
 static constexpr std::size_t B3FIXED = 5;
 
@@ -95,7 +97,6 @@ extern char** myargv;
 extern Bool shape;
 extern char* termprog;
 extern char const* shell;
-extern char const* version[];
 extern int _border;
 extern int _inset;
 extern int curtime;
